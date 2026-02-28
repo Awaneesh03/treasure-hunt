@@ -41,7 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 });
 
-// ── Init: validate URL, enforce team name before anything else ──
+// ── Init ──────────────────────────────────────────────────────
+// localStorage stores ONLY team name. All progression comes from DB.
 async function init() {
   const params = new URLSearchParams(window.location.search);
   clueNum = parseInt(params.get('clue'), 10);
@@ -51,17 +52,18 @@ async function init() {
     return;
   }
 
-  teamName = localStorage.getItem(TEAM_KEY);
+  // Only permitted localStorage read: team name
+  teamName = localStorage.getItem(TEAM_KEY) || null;
 
   if (!teamName) {
+    // Hard stop — never touch Supabase until team name is set
     $loading.style.display      = 'none';
-    $questionCard.style.display = 'none';   // explicit guard
+    $questionCard.style.display = 'none';
     $teamScreen.style.display   = 'block';
     $teamInput.focus();
-    return;                                 // hard stop — no fetch until team name set
+    return;
   }
 
-  // Team name confirmed — safe to proceed
   db.from('questions').select('id').limit(1).then(() => {});  // warm-up
   await fetchQuestion();
 }
@@ -77,16 +79,16 @@ function submitTeamName() {
   }
 
   teamName = name;
-  localStorage.setItem(TEAM_KEY, teamName);
+  localStorage.setItem(TEAM_KEY, teamName);  // only localStorage write in entire app
 
-  $teamBtn.disabled         = true;  // prevent double-tap
+  $teamBtn.disabled         = true;
   $teamScreen.style.display = 'none';
   $loading.style.display    = 'block';
 
   fetchQuestion().finally(() => { $teamBtn.disabled = false; });
 }
 
-// ── Fetch question with sequential validation per team ────────
+// ── Fetch question — progression driven entirely by Supabase ──
 async function fetchQuestion() {
   const clueNumber = Number(clueNum);
 
@@ -95,7 +97,8 @@ async function fetchQuestion() {
     return;
   }
 
-  // ── 1. Count solved clues for this team ──────────────────────
+  // ── 1. Sole source of truth: count DB rows for this team ─────
+  //       If DB was reset → count = 0 → allowedClue = 1 always.
   const { count, error: countError } = await db
     .from('teams_progress')
     .select('*', { count: 'exact', head: true })
@@ -106,8 +109,10 @@ async function fetchQuestion() {
     return;
   }
 
-  const solvedCount = count ?? 0;
+  const solvedCount = count ?? 0;   // 0 when DB empty or after reset
   const allowedClue = solvedCount + 1;
+
+  console.log('[TreasureHunt] team:', teamName, '| solvedCount:', solvedCount, '| allowedClue:', allowedClue, '| requested:', clueNumber);
 
   // ── 2. Block if skipping ahead ───────────────────────────────
   if (clueNumber > allowedClue) {
@@ -115,7 +120,7 @@ async function fetchQuestion() {
     return;
   }
 
-  // ── 3. Fetch question from DB ────────────────────────────────
+  // ── 3. Load question from DB ─────────────────────────────────
   const { data, error } = await db
     .from('questions')
     .select('id, order_number, question, answer, clue')
@@ -128,19 +133,25 @@ async function fetchQuestion() {
   }
 
   currentQuestion = data;
+  answered = false;  // reset guard for this page load
 
   $loading.style.display      = 'none';
   $questionCard.style.display = 'block';
   $progress.textContent       = `Clue #${clueNumber}  ·  ${teamName}`;
   $questionText.textContent   = data.question;
 
-  // ── 4. Already solved — show clue, hide answer form ─────────
+  // ── 4. Already solved — read-only view ───────────────────────
   if (clueNumber < allowedClue) {
+    $answerInput.disabled = true;
+    $submitBtn.disabled   = true;
     showClue(data.clue?.trim() || 'You already solved this clue!');
     return;
   }
 
   // ── 5. Exact next clue — allow answering ─────────────────────
+  $answerInput.disabled = false;
+  $submitBtn.disabled   = false;
+  $answerInput.value    = '';
   $answerInput.focus();
 }
 
