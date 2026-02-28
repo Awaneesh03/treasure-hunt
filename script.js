@@ -1,16 +1,23 @@
 // ============================================================
 //  Treasure Hunt – Participant Page  (production-ready)
-//  URL format:  yoursite.com/?clue=1
+//  URL format:  yoursite.com/?clue=N
 //  Requires:    config.js  →  SUPABASE_URL, SUPABASE_ANON_KEY
 //  DB model:    ONE row per team in teams_progress.
-//               clue_number = the clue they are currently ON.
+//               clue_number = group-local clue they are currently ON (1-5).
 //               Starts at 1 on registration; incremented by UPDATE
 //               after each correct answer.
+//
+//  QR code mapping:
+//    blue  →  ?clue=1..5   maps to group_clue_number 1..5  (offset 0)
+//    red   →  ?clue=6..10  maps to group_clue_number 1..5  (offset 5)
 // ============================================================
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const TEAM_KEY = 'teamName';   // only localStorage key used
+
+// URL clue offset per group: group_clue_number = URL clueNum - offset
+const GROUP_CLUE_OFFSET = { red: 5, blue: 0 };
 
 let currentQuestion = null;
 let clueNum         = null;
@@ -189,21 +196,30 @@ async function fetchQuestion(teamClueNumber) {
     teamClueNumber = team.clue_number;
   }
 
+  // Translate URL clue number → group-local clue number (1-5 for both groups)
+  const offset          = GROUP_CLUE_OFFSET[groupName] ?? 0;
+  const groupClueNumber = clueNumber - offset;
+
+  if (groupClueNumber < 1) {
+    showError('This QR code is not for your group.');
+    return;
+  }
+
   console.log('[TreasureHunt] team:', teamName, '| group:', groupName,
-    '| teamClue:', teamClueNumber, '| requested:', clueNumber);
+    '| teamClue:', teamClueNumber, '| groupClue:', groupClueNumber);
 
   // ── Block if trying to skip ahead ────────────────────────────
-  if (clueNumber > teamClueNumber) {
+  if (groupClueNumber > teamClueNumber) {
     showError(`You must solve Clue #${teamClueNumber} first.`);
     return;
   }
 
-  // ── Fetch question by group + clue number ─────────────────────
+  // ── Fetch question by group + group-local clue number ─────────
   const { data, error } = await db
     .from('questions')
     .select('id, group_name, group_clue_number, question, answer, clue')
     .eq('group_name', groupName)
-    .eq('group_clue_number', clueNumber)
+    .eq('group_clue_number', groupClueNumber)
     .single();
 
   if (error || !data) {
@@ -216,11 +232,11 @@ async function fetchQuestion(teamClueNumber) {
 
   $loading.style.display      = 'none';
   $questionCard.style.display = 'block';
-  $progress.textContent       = `Clue #${clueNumber}  ·  ${teamName}`;
+  $progress.textContent       = `Clue #${groupClueNumber}  ·  ${teamName}`;
   $questionText.textContent   = data.question;
 
   // ── Already solved — read-only view ───────────────────────────
-  if (clueNumber < teamClueNumber) {
+  if (groupClueNumber < teamClueNumber) {
     $answerSection.style.display = 'block';
     $clueSection.style.display   = 'none';
     $answerInput.disabled        = true;
@@ -273,7 +289,7 @@ function checkAnswer() {
 
 // ── Save progress — UPDATE single row, advance clue_number ────
 async function saveProgress() {
-  const nextClue = Number(clueNum) + 1;
+  const nextClue = currentQuestion.group_clue_number + 1;
 
   const { error } = await db
     .from('teams_progress')
