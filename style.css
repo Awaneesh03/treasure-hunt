@@ -1,0 +1,95 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f2f2f2;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 2rem;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.5px;
+}
+
+.progress {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 1.5rem;
+}
+
+.question-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  color: #222;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #333;
+}
+
+button {
+  width: 100%;
+  padding: 0.75rem;
+  background: #1a1a1a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover  { background: #444; }
+button:active { background: #000; }
+
+.feedback {
+  margin-top: 1rem;
+  font-weight: 600;
+  text-align: center;
+  font-size: 0.95rem;
+  min-height: 1.4rem;
+}
+
+.feedback.correct { color: #1a8a1a; }
+.feedback.wrong   { color: #cc2222; }
+
+#completed {
+  text-align: center;
+}
+#completed h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+#completed p {
+  color: #555;
+  margin-top: 0.5rem;
+}
+
+.center { text-align: center; color: #888; }
+.err    { color: #cc2222; text-align: center; }
