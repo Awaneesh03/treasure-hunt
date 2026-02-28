@@ -511,50 +511,50 @@
         .from('questions')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch all progress rows including group_name, oldest first
-      const { data, error } = await db
-        .from('teams_progress')
-        .select('team_name, clue_number, solved_at, group_name')
-        .order('solved_at', { ascending: true });
-
-      if (error) {
-        const msg = '<p class="empty-state" style="color:#cc2222">Failed to load.</p>';
-        $red.innerHTML = $blue.innerHTML = msg;
-        stampTime();
-        return;
-      }
-
-      // Aggregate per team: highest clue_number reached + last solved time
-      const teamsMap = {};
-      (data || []).forEach(row => {
-        if (!teamsMap[row.team_name]) {
-          teamsMap[row.team_name] = {
-            team_name:  row.team_name,
-            group_name: row.group_name || '',
-            maxClue:    0,
-            latest:     null
-          };
-        }
-        const t = teamsMap[row.team_name];
-        if (row.clue_number > t.maxClue) t.maxClue = row.clue_number;
-        t.latest = row.solved_at;  // ascending order → last row = most recent
-      });
-
       const total = totalCount ?? '?';
 
-      // Sort: highest clue first, then earliest solved_at for ties
-      const sortFn = (a, b) => {
+      // Fetch red and blue separately — exclude registration rows (clue_number = 0)
+      const [redResult, blueResult] = await Promise.all([
+        db.from('teams_progress')
+          .select('team_name, clue_number, solved_at')
+          .eq('group_name', 'red')
+          .gt('clue_number', 0)
+          .order('solved_at', { ascending: true }),
+        db.from('teams_progress')
+          .select('team_name, clue_number, solved_at')
+          .eq('group_name', 'blue')
+          .gt('clue_number', 0)
+          .order('solved_at', { ascending: true })
+      ]);
+
+      // Only show error on actual Supabase error; empty array = "no activity"
+      $red.innerHTML  = redResult.error
+        ? '<p class="empty-state" style="color:#cc2222">Failed to load red teams.</p>'
+        : renderGroup(aggregateTeams(redResult.data || []), total);
+
+      $blue.innerHTML = blueResult.error
+        ? '<p class="empty-state" style="color:#cc2222">Failed to load blue teams.</p>'
+        : renderGroup(aggregateTeams(blueResult.data || []), total);
+
+      stampTime();
+    }
+
+    // Aggregate rows → one entry per team with maxClue + latest solved_at
+    function aggregateTeams(rows) {
+      const map = {};
+      rows.forEach(row => {
+        if (!map[row.team_name]) {
+          map[row.team_name] = { team_name: row.team_name, maxClue: 0, latest: null };
+        }
+        if (row.clue_number > map[row.team_name].maxClue) {
+          map[row.team_name].maxClue = row.clue_number;
+        }
+        map[row.team_name].latest = row.solved_at;  // ascending → last = most recent
+      });
+      return Object.values(map).sort((a, b) => {
         if (b.maxClue !== a.maxClue) return b.maxClue - a.maxClue;
         return new Date(a.latest) - new Date(b.latest);
-      };
-
-      const all       = Object.values(teamsMap);
-      const redTeams  = all.filter(t => t.group_name === 'red').sort(sortFn);
-      const blueTeams = all.filter(t => t.group_name === 'blue').sort(sortFn);
-
-      $red.innerHTML  = renderGroup(redTeams,  total);
-      $blue.innerHTML = renderGroup(blueTeams, total);
-      stampTime();
+      });
     }
 
     function renderGroup(teams, total) {
@@ -570,9 +570,7 @@
       return `
         <table class="lb-table">
           <thead>
-            <tr>
-              <th>#</th><th>Team</th><th>Clue</th><th>Last Solved</th>
-            </tr>
+            <tr><th>#</th><th>Team</th><th>Clue</th><th>Last Solved</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>

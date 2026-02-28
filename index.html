@@ -15,8 +15,16 @@
     <!-- Team name screen (shown once if team not yet registered) -->
     <div id="team-screen" style="display:none">
       <h1>Treasure Hunt</h1>
-      <p class="team-prompt">Enter your team name to begin</p>
+      <p class="team-prompt">Enter your team name and select your group</p>
       <input type="text" id="team-input" placeholder="Team name…" maxlength="50" autocomplete="off" />
+      <div style="display:flex;gap:0.6rem;margin-bottom:0.75rem">
+        <label style="flex:1;display:flex;align-items:center;gap:0.5rem;padding:0.65rem 0.9rem;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.95rem">
+          <input type="radio" name="group" value="red" /> Red Team
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:0.5rem;padding:0.65rem 0.9rem;border:1px solid #ccc;border-radius:6px;cursor:pointer;font-size:0.95rem">
+          <input type="radio" name="group" value="blue" /> Blue Team
+        </label>
+      </div>
       <button id="team-btn">Continue</button>
       <p class="feedback" id="team-error"></p>
     </div>
