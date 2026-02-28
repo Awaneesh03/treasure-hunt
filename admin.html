@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Treasure Hunt</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f2f2f2;
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+    }
+
+    /* ── Login screen ───────────────────────── */
+    #login-screen {
+      max-width: 360px;
+      margin: 8vh auto 0;
+      background: #fff;
+      border-radius: 10px;
+      padding: 2rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    #login-screen h1 { margin-bottom: 1.25rem; font-size: 1.3rem; }
+
+    /* ── Shared form elements ───────────────── */
+    input[type="text"],
+    input[type="number"],
+    input[type="password"],
+    textarea {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #333;
+    }
+
+    textarea { resize: vertical; min-height: 72px; }
+
+    button {
+      padding: 0.6rem 1.1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-primary   { background: #1a1a1a; color: #fff; }
+    .btn-primary:hover   { background: #444; }
+
+    .btn-secondary { background: #eee; color: #333; }
+    .btn-secondary:hover { background: #ddd; }
+
+    .btn-danger    { background: #cc2222; color: #fff; }
+    .btn-danger:hover { background: #a81a1a; }
+
+    .btn-wide { width: 100%; margin-top: 0.75rem; }
+
+    /* ── Admin panel layout ─────────────────── */
+    #admin-panel { max-width: 760px; margin: 0 auto; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .panel-header h1 { font-size: 1.4rem; }
+
+    /* ── Add-question box ───────────────────── */
+    .add-box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    }
+
+    .add-box h2 { font-size: 1rem; margin-bottom: 1rem; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 0.6rem;
+      margin-bottom: 0.6rem;
+    }
+
+    /* ── Questions list ─────────────────────── */
+    .q-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+    }
+
+    /* View mode */
+    .q-view {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .order-badge {
+      flex-shrink: 0;
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 4px;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .q-body { flex: 1; min-width: 0; }
+    .q-body .q-question { font-weight: 600; word-break: break-word; }
+    .q-body .q-answer   { color: #555; font-size: 0.9rem; margin-top: 0.25rem; }
+    .q-body .q-answer span { font-weight: 600; color: #222; }
+
+    .q-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+    /* Edit mode */
+    .q-edit { display: none; }
+    .q-edit .form-row { margin-bottom: 0.5rem; }
+    .q-edit textarea  { margin-bottom: 0.5rem; }
+    .q-edit .edit-actions { display: flex; gap: 0.5rem; }
+
+    /* Feedback / status */
+    .status-bar {
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .status-bar.ok  { background: #d4edda; color: #155724; display: block; }
+    .status-bar.err { background: #f8d7da; color: #721c24; display: block; }
+
+    .empty-state { text-align: center; color: #888; padding: 2rem 0; }
+
+    .login-err { color: #cc2222; margin-top: 0.75rem; font-size: 0.9rem; display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════ LOGIN SCREEN ══════════════ -->
+  <div id="login-screen">
+    <h1>Admin Login</h1>
+    <input type="password" id="password-input" placeholder="Enter admin password" />
+    <button class="btn-primary btn-wide" id="login-btn">Login</button>
+    <p class="login-err" id="login-err">Incorrect password. Try again.</p>
+  </div>
+
+  <!-- ══════════════ ADMIN PANEL ══════════════ -->
+  <div id="admin-panel" style="display:none">
+
+    <div class="panel-header">
+      <h1>Manage Questions</h1>
+      <button class="btn-secondary" id="logout-btn">Logout</button>
+    </div>
+
+    <!-- Status messages -->
+    <div class="status-bar" id="status-bar"></div>
+
+    <!-- Add new question -->
+    <div class="add-box">
+      <h2>Add New Question</h2>
+      <div class="form-row">
+        <input type="number" id="new-order" placeholder="Order #" min="1" />
+        <input type="text" id="new-answer" placeholder="Answer (exact, case-insensitive)" />
+      </div>
+      <textarea id="new-question" placeholder="Question text…"></textarea>
+      <button class="btn-primary btn-wide" id="add-btn">Add Question</button>
+    </div>
+
+    <!-- Questions list -->
+    <div id="questions-list"></div>
+
+  </div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    // ── Supabase client ─────────────────────────────────────────
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ── DOM refs ────────────────────────────────────────────────
+    const $loginScreen  = document.getElementById('login-screen');
+    const $adminPanel   = document.getElementById('admin-panel');
+    const $passwordInput= document.getElementById('password-input');
+    const $loginBtn     = document.getElementById('login-btn');
+    const $loginErr     = document.getElementById('login-err');
+    const $logoutBtn    = document.getElementById('logout-btn');
+    const $statusBar    = document.getElementById('status-bar');
+    const $list         = document.getElementById('questions-list');
+    const $addBtn       = document.getElementById('add-btn');
+
+    // ── Login / Logout ──────────────────────────────────────────
+    function login() {
+      if ($passwordInput.value === ADMIN_PASSWORD) {
+        $loginScreen.style.display = 'none';
+        $adminPanel.style.display  = 'block';
+        $loginErr.style.display    = 'none';
+        loadQuestions();
+      } else {
+        $loginErr.style.display = 'block';
+        $passwordInput.value    = '';
+        $passwordInput.focus();
+      }
+    }
+
+    function logout() {
+      $adminPanel.style.display  = 'none';
+      $loginScreen.style.display = 'block';
+      $passwordInput.value       = '';
+    }
+
+    $loginBtn.addEventListener('click', login);
+    $logoutBtn.addEventListener('click', logout);
+    $passwordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
+    });
+
+    // ── Load & render questions ─────────────────────────────────
+    async function loadQuestions() {
+      $list.innerHTML = '<p class="empty-state">Loading…</p>';
+
+      const { data, error } = await db
+        .from('questions')
+        .select('*')
+        .order('order_number', { ascending: true });
+
+      if (error) { showStatus('Failed to load questions: ' + error.message, 'err'); return; }
+
+      render(data || []);
+    }
+
+    function render(qs) {
+      if (qs.length === 0) {
+        $list.innerHTML = '<p class="empty-state">No questions yet. Add one above.</p>';
+        return;
+      }
+
+      $list.innerHTML = qs.map(q => `
+        <div class="q-card" id="q-${q.id}">
+
+          <!-- View mode -->
+          <div class="q-view">
+            <span class="order-badge">#${q.order_number}</span>
+            <div class="q-body">
+              <p class="q-question">${esc(q.question)}</p>
+              <p class="q-answer">Answer: <span>${esc(q.answer)}</span></p>
+            </div>
+            <div class="q-actions">
+              <button class="btn-secondary" onclick="startEdit(${q.id})">Edit</button>
+              <button class="btn-danger"    onclick="deleteQ(${q.id})">Delete</button>
+            </div>
+          </div>
+
+          <!-- Edit mode (hidden by default) -->
+          <div class="q-edit" id="edit-${q.id}">
+            <div class="form-row">
+              <input type="number" id="eo-${q.id}" value="${q.order_number}" placeholder="Order #" min="1" />
+              <input type="text"   id="ea-${q.id}" value="${esc(q.answer)}"  placeholder="Answer" />
+            </div>
+            <textarea id="eq-${q.id}">${esc(q.question)}</textarea>
+            <div class="edit-actions">
+              <button class="btn-primary"   onclick="saveEdit(${q.id})">Save</button>
+              <button class="btn-secondary" onclick="cancelEdit(${q.id})">Cancel</button>
+            </div>
+          </div>
+
+        </div>
+      `).join('');
+    }
+
+    // ── Add question ────────────────────────────────────────────
+    $addBtn.addEventListener('click', async () => {
+      const order    = parseInt(document.getElementById('new-order').value, 10);
+      const question = document.getElementById('new-question').value.trim();
+      const answer   = document.getElementById('new-answer').value.trim();
+
+      if (!order || !question || !answer) {
+        showStatus('Please fill in all three fields (order, question, answer).', 'err');
+        return;
+      }
+
+      $addBtn.disabled = true;
+      const { error } = await db
+        .from('questions')
+        .insert({ order_number: order, question, answer });
+
+      $addBtn.disabled = false;
+
+      if (error) { showStatus('Error adding question: ' + error.message, 'err'); return; }
+
+      document.getElementById('new-order').value    = '';
+      document.getElementById('new-question').value = '';
+      document.getElementById('new-answer').value   = '';
+      showStatus('Question added!', 'ok');
+      loadQuestions();
+    });
+
+    // ── Edit helpers ────────────────────────────────────────────
+    function startEdit(id) {
+      document.querySelector(`#q-${id} .q-view`).style.display = 'none';
+      document.getElementById(`edit-${id}`).style.display      = 'block';
+    }
+
+    function cancelEdit(id) {
+      document.querySelector(`#q-${id} .q-view`).style.display = 'flex';
+      document.getElementById(`edit-${id}`).style.display      = 'none';
+    }
+
+    async function saveEdit(id) {
+      const order    = parseInt(document.getElementById(`eo-${id}`).value, 10);
+      const question = document.getElementById(`eq-${id}`).value.trim();
+      const answer   = document.getElementById(`ea-${id}`).value.trim();
+
+      if (!order || !question || !answer) {
+        showStatus('All fields are required.', 'err');
+        return;
+      }
+
+      const { error } = await db
+        .from('questions')
+        .update({ order_number: order, question, answer })
+        .eq('id', id);
+
+      if (error) { showStatus('Error saving: ' + error.message, 'err'); return; }
+
+      showStatus('Saved!', 'ok');
+      loadQuestions();
+    }
+
+    // ── Delete question ─────────────────────────────────────────
+    async function deleteQ(id) {
+      if (!confirm('Delete this question? This cannot be undone.')) return;
+
+      const { error } = await db
+        .from('questions')
+        .delete()
+        .eq('id', id);
+
+      if (error) { showStatus('Error deleting: ' + error.message, 'err'); return; }
+
+      showStatus('Question deleted.', 'ok');
+      loadQuestions();
+    }
+
+    // ── Status bar helper ───────────────────────────────────────
+    let statusTimer;
+    function showStatus(msg, type) {
+      $statusBar.textContent = msg;
+      $statusBar.className   = `status-bar ${type}`;
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => { $statusBar.className = 'status-bar'; }, 3500);
+    }
+
+    // ── XSS-safe escaping ───────────────────────────────────────
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
