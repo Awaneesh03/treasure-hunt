@@ -2,12 +2,15 @@
 //  Treasure Hunt – Participant Page  (production-ready)
 //  URL format:  yoursite.com/?clue=1
 //  Requires:    config.js  →  SUPABASE_URL, SUPABASE_ANON_KEY
+//  DB model:    ONE row per team in teams_progress.
+//               clue_number = the clue they are currently ON.
+//               Starts at 1 on registration; incremented by UPDATE
+//               after each correct answer.
 // ============================================================
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TEAM_KEY  = 'teamName';   // only localStorage keys permitted
-const GROUP_KEY = 'groupName';
+const TEAM_KEY = 'teamName';   // only localStorage key used
 
 let currentQuestion = null;
 let clueNum         = null;
@@ -44,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Init ──────────────────────────────────────────────────────
-// localStorage: team name + group only. All progression from DB.
 async function init() {
   const params = new URLSearchParams(window.location.search);
   clueNum = parseInt(params.get('clue'), 10);
@@ -61,27 +63,24 @@ async function init() {
     return;
   }
 
-  // Verify team exists in DB and retrieve group
-  const { data, error } = await db
+  // Fetch team's current row from DB (single row per team)
+  const { data: team, error } = await db
     .from('teams_progress')
-    .select('team_name, group_name')
+    .select('team_name, group_name, clue_number')
     .eq('team_name', storedName)
-    .limit(1);
+    .maybeSingle();
 
-  if (error || !data || data.length === 0) {
-    // Team not found in DB — clear stale localStorage and re-register
+  if (error || !team) {
+    // Team not found — clear stale localStorage and re-register
     localStorage.removeItem(TEAM_KEY);
-    localStorage.removeItem(GROUP_KEY);
     showTeamScreen();
     return;
   }
 
   teamName  = storedName;
-  groupName = data[0].group_name;
-  localStorage.setItem(GROUP_KEY, groupName);
+  groupName = team.group_name;
 
-  db.from('questions').select('id').limit(1).then(() => {});  // warm-up
-  await fetchQuestion();
+  await fetchQuestion(team.clue_number);
 }
 
 function showTeamScreen() {
@@ -111,12 +110,12 @@ async function submitTeamName() {
   $teamScreen.style.display = 'none';
   $loading.style.display    = 'block';
 
-  // Check if team already registered in DB
+  // Check if team already has a row in DB
   const { data: existing, error: checkError } = await db
     .from('teams_progress')
-    .select('team_name, group_name')
+    .select('team_name, group_name, clue_number')
     .eq('team_name', name)
-    .limit(1);
+    .maybeSingle();
 
   if (checkError) {
     showError('Could not register team. Please try again.', true);
@@ -124,32 +123,42 @@ async function submitTeamName() {
     return;
   }
 
-  if (!existing || existing.length === 0) {
-    // New team — insert registration row (clue_number=0 marks registration only)
+  let teamClueNumber;
+
+  if (!existing) {
+    // New team — insert single row with clue_number = 1 (they start on clue 1)
     const { error: insertError } = await db
       .from('teams_progress')
-      .insert({ team_name: name, group_name: group, clue_number: 0, solved_at: null });
+      .insert({
+        team_name:   name,
+        group_name:  group,
+        clue_number: 1,
+        solved_at:   new Date().toISOString()
+      });
 
     if (insertError && insertError.code !== '23505') {
       showError('Could not register team. Please try again.', true);
       $teamBtn.disabled = false;
       return;
     }
-    groupName = group;
+
+    groupName      = group;
+    teamClueNumber = 1;
   } else {
-    // Returning team — use group from DB
-    groupName = existing[0].group_name;
+    // Returning team — always use group + position from DB
+    groupName      = existing.group_name;
+    teamClueNumber = existing.clue_number;
   }
 
   teamName = name;
-  localStorage.setItem(TEAM_KEY,  teamName);
-  localStorage.setItem(GROUP_KEY, groupName);
+  localStorage.setItem(TEAM_KEY, teamName);
 
-  fetchQuestion().finally(() => { $teamBtn.disabled = false; });
+  fetchQuestion(teamClueNumber).finally(() => { $teamBtn.disabled = false; });
 }
 
 // ── Fetch question — progression driven entirely by Supabase ──
-async function fetchQuestion() {
+// teamClueNumber: the clue the team is currently on (from DB row)
+async function fetchQuestion(teamClueNumber) {
   const clueNumber = Number(clueNum);
 
   if (!clueNumber || clueNumber < 1) {
@@ -157,37 +166,39 @@ async function fetchQuestion() {
     return;
   }
 
-  // groupName must be set before this runs (via init() DB check or submitTeamName())
   if (!groupName) {
     showError('Group not set. Please clear your browser data and re-register.', true);
     return;
   }
 
-  // ── 1. Count actual progress rows for this team (excl. registration row) ──
-  const { count, error: countError } = await db
-    .from('teams_progress')
-    .select('*', { count: 'exact', head: true })
-    .eq('team_name', teamName)
-    .gt('clue_number', 0);
+  // If called without teamClueNumber, fetch fresh from DB (safety fallback)
+  if (teamClueNumber === undefined) {
+    const { data: team, error } = await db
+      .from('teams_progress')
+      .select('clue_number, group_name')
+      .eq('team_name', teamName)
+      .maybeSingle();
 
-  if (countError) {
-    showError('Could not verify your progress. Please try again.', true);
-    return;
+    if (error || !team) {
+      localStorage.removeItem(TEAM_KEY);
+      showTeamScreen();
+      return;
+    }
+
+    groupName      = team.group_name;
+    teamClueNumber = team.clue_number;
   }
-
-  const solvedCount = count ?? 0;
-  const allowedClue = solvedCount + 1;
 
   console.log('[TreasureHunt] team:', teamName, '| group:', groupName,
-    '| solved:', solvedCount, '| allowed:', allowedClue, '| requested:', clueNumber);
+    '| teamClue:', teamClueNumber, '| requested:', clueNumber);
 
-  // ── 2. Block if skipping ahead ───────────────────────────────
-  if (clueNumber > allowedClue) {
-    showError(`You must solve Clue #${allowedClue} first.`);
+  // ── Block if trying to skip ahead ────────────────────────────
+  if (clueNumber > teamClueNumber) {
+    showError(`You must solve Clue #${teamClueNumber} first.`);
     return;
   }
 
-  // ── 3. Fetch by group_name + group_clue_number (per-group numbering) ──
+  // ── Fetch question by group + clue number ─────────────────────
   const { data, error } = await db
     .from('questions')
     .select('id, group_name, group_clue_number, question, answer, clue')
@@ -201,25 +212,29 @@ async function fetchQuestion() {
   }
 
   currentQuestion = data;
-  answered = false;
+  answered        = false;
 
   $loading.style.display      = 'none';
   $questionCard.style.display = 'block';
   $progress.textContent       = `Clue #${clueNumber}  ·  ${teamName}`;
   $questionText.textContent   = data.question;
 
-  // ── 4. Already solved — read-only view ───────────────────────
-  if (clueNumber < allowedClue) {
-    $answerInput.disabled = true;
-    $submitBtn.disabled   = true;
+  // ── Already solved — read-only view ───────────────────────────
+  if (clueNumber < teamClueNumber) {
+    $answerSection.style.display = 'block';
+    $clueSection.style.display   = 'none';
+    $answerInput.disabled        = true;
+    $submitBtn.disabled          = true;
     showClue(data.clue?.trim() || 'You already solved this clue!');
     return;
   }
 
-  // ── 5. Exact next clue — allow answering ─────────────────────
-  $answerInput.disabled = false;
-  $submitBtn.disabled   = false;
-  $answerInput.value    = '';
+  // ── Current clue — allow answering ────────────────────────────
+  $answerSection.style.display = 'block';
+  $clueSection.style.display   = 'none';
+  $answerInput.disabled        = false;
+  $submitBtn.disabled          = false;
+  $answerInput.value           = '';
   $answerInput.focus();
 }
 
@@ -249,7 +264,6 @@ function checkAnswer() {
 
   } else {
     setFeedback('Try again!', 'wrong');
-    // Shake the input field on wrong answer
     $answerInput.classList.remove('shake');
     void $answerInput.offsetWidth;       // force reflow to restart animation
     $answerInput.classList.add('shake');
@@ -257,27 +271,26 @@ function checkAnswer() {
   }
 }
 
-// ── Save progress to Supabase with one retry ─────────────────
+// ── Save progress — UPDATE single row, advance clue_number ────
 async function saveProgress() {
-  const payload = {
-    team_name:   teamName,
-    group_name:  groupName,
-    clue_number: clueNum,
-    solved_at:   new Date().toISOString()
-  };
+  const nextClue = Number(clueNum) + 1;
 
-  let { error } = await db.from('teams_progress').insert(payload);
+  const { error } = await db
+    .from('teams_progress')
+    .update({ clue_number: nextClue, solved_at: new Date().toISOString() })
+    .eq('team_name', teamName);
 
-  if (error && error.code !== '23505') {
+  if (error) {
     // Retry once after 2 seconds
     await new Promise(r => setTimeout(r, 2000));
-    ({ error } = await db.from('teams_progress').insert(payload));
-    if (error && error.code !== '23505') {
-      console.error('Progress save failed after retry:', error.message);
-      return;
+    const { error: retryError } = await db
+      .from('teams_progress')
+      .update({ clue_number: nextClue, solved_at: new Date().toISOString() })
+      .eq('team_name', teamName);
+    if (retryError) {
+      console.error('Progress save failed after retry:', retryError.message);
     }
   }
-
 }
 
 // ── Reveal the clue box ───────────────────────────────────────
