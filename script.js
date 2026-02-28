@@ -6,8 +6,7 @@
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TEAM_KEY = 'teamName';          // localStorage key for team name
-const SOLVED_KEY = n => `solved_${n}`;// localStorage key per solved clue
+const TEAM_KEY = 'teamName';  // localStorage key for team name
 
 let currentQuestion = null;
 let clueNum         = null;
@@ -42,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 });
 
-// ── Init: validate URL param, check sequential order, show team screen or question ──
+// ── Init: read URL param, show team screen or load question directly ──
 async function init() {
   // Warm up Supabase connection so the first real query is instant
   db.from('questions').select('id').limit(1).then(() => {});
@@ -51,13 +50,7 @@ async function init() {
   clueNum = parseInt(params.get('clue'), 10);
 
   if (!params.has('clue') || isNaN(clueNum) || clueNum < 1) {
-    showError('No clue number found. Make sure you scanned the correct QR code.');
-    return;
-  }
-
-  // Prevent skipping ahead: clue N requires clue N-1 to be solved first
-  if (clueNum > 1 && !localStorage.getItem(SOLVED_KEY(clueNum - 1))) {
-    showError(`You must solve Clue #${clueNum - 1} before this one!`);
+    showError('Invalid QR code.');
     return;
   }
 
@@ -181,8 +174,6 @@ async function saveProgress() {
     }
   }
 
-  // Mark locally so sequential enforcement works on the next clue
-  localStorage.setItem(SOLVED_KEY(clueNum), '1');
 }
 
 // ── Reveal the clue box ───────────────────────────────────────
