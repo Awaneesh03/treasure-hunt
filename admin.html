@@ -188,6 +188,35 @@
     .lb-name  { font-weight: 600; }
     .lb-clues { color: #333; }
     .lb-time  { color: #888; font-size: 0.85rem; }
+
+    /* ── Two-group layout ───────────────────── */
+    .lb-groups {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 580px) {
+      .lb-groups { grid-template-columns: 1fr; }
+    }
+
+    .lb-group-header {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.55rem 0.9rem;
+      border-radius: 8px 8px 0 0;
+      color: #fff;
+    }
+    .red-header  { background: #b03030; }
+    .blue-header { background: #1f5fa6; }
+
+    .lb-group .lb-box {
+      border-radius: 0 0 10px 10px;
+      padding: 0;
+    }
+    .lb-group .lb-table td,
+    .lb-group .lb-table th { padding: 0.55rem 0.7rem; }
   </style>
 </head>
 <body>
@@ -255,8 +284,15 @@
           <button class="btn-secondary" onclick="loadLeaderboard()">Refresh</button>
         </div>
       </div>
-      <div class="lb-box">
-        <div id="leaderboard-content"><p class="empty-state">Loading…</p></div>
+      <div class="lb-groups">
+        <div class="lb-group">
+          <div class="lb-group-header red-header">Red Teams</div>
+          <div class="lb-box" id="lb-red"><p class="empty-state">Loading…</p></div>
+        </div>
+        <div class="lb-group">
+          <div class="lb-group-header blue-header">Blue Teams</div>
+          <div class="lb-box" id="lb-blue"><p class="empty-state">Loading…</p></div>
+        </div>
       </div>
     </div>
 
@@ -460,79 +496,87 @@
 
     // ── Leaderboard ─────────────────────────────────────────────
     async function loadLeaderboard() {
-      const $content = document.getElementById('leaderboard-content');
-      $content.innerHTML = '<p class="empty-state">Loading…</p>';
-
-      // Fetch total question count for the "X / total" display
-      const { count: totalCount } = await db
-        .from('questions')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch all progress rows, oldest first so the last row per team = most recent
-      const { data, error } = await db
-        .from('teams_progress')
-        .select('team_name, clue_number, solved_at')
-        .order('solved_at', { ascending: true });
+      const $red  = document.getElementById('lb-red');
+      const $blue = document.getElementById('lb-blue');
+      $red.innerHTML  = '<p class="empty-state">Loading…</p>';
+      $blue.innerHTML = '<p class="empty-state">Loading…</p>';
 
       const stampTime = () => {
         document.getElementById('lb-updated').textContent =
           'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       };
 
+      // Total question count for "X / total" column
+      const { count: totalCount } = await db
+        .from('questions')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch all progress rows including group_name, oldest first
+      const { data, error } = await db
+        .from('teams_progress')
+        .select('team_name, clue_number, solved_at, group_name')
+        .order('solved_at', { ascending: true });
+
       if (error) {
-        $content.innerHTML = '<p class="empty-state" style="color:#cc2222">Failed to load. Check Supabase.</p>';
+        const msg = '<p class="empty-state" style="color:#cc2222">Failed to load.</p>';
+        $red.innerHTML = $blue.innerHTML = msg;
         stampTime();
         return;
       }
 
-      if (!data || data.length === 0) {
-        $content.innerHTML = '<p class="empty-state">No teams have solved any clues yet.</p>';
-        stampTime();
-        return;
-      }
-
-      // Group rows by team name
+      // Aggregate per team: highest clue_number reached + last solved time
       const teamsMap = {};
-      data.forEach(row => {
+      (data || []).forEach(row => {
         if (!teamsMap[row.team_name]) {
-          teamsMap[row.team_name] = { team_name: row.team_name, clues: new Set(), latest: null };
+          teamsMap[row.team_name] = {
+            team_name:  row.team_name,
+            group_name: row.group_name || '',
+            maxClue:    0,
+            latest:     null
+          };
         }
-        teamsMap[row.team_name].clues.add(row.clue_number);
-        teamsMap[row.team_name].latest = row.solved_at;  // ascending → last = most recent
-      });
-
-      // Sort: most clues first; ties broken by earliest last-activity (finished sooner)
-      const sorted = Object.values(teamsMap).sort((a, b) => {
-        if (b.clues.size !== a.clues.size) return b.clues.size - a.clues.size;
-        return new Date(a.latest) - new Date(b.latest);
+        const t = teamsMap[row.team_name];
+        if (row.clue_number > t.maxClue) t.maxClue = row.clue_number;
+        t.latest = row.solved_at;  // ascending order → last row = most recent
       });
 
       const total = totalCount ?? '?';
 
-      const rows = sorted.map((t, i) => `
+      // Sort: highest clue first, then earliest solved_at for ties
+      const sortFn = (a, b) => {
+        if (b.maxClue !== a.maxClue) return b.maxClue - a.maxClue;
+        return new Date(a.latest) - new Date(b.latest);
+      };
+
+      const all       = Object.values(teamsMap);
+      const redTeams  = all.filter(t => t.group_name === 'red').sort(sortFn);
+      const blueTeams = all.filter(t => t.group_name === 'blue').sort(sortFn);
+
+      $red.innerHTML  = renderGroup(redTeams,  total);
+      $blue.innerHTML = renderGroup(blueTeams, total);
+      stampTime();
+    }
+
+    function renderGroup(teams, total) {
+      if (teams.length === 0) return '<p class="empty-state">No activity yet.</p>';
+      const rows = teams.map((t, i) => `
         <tr>
           <td class="lb-rank">${i + 1}</td>
           <td class="lb-name">${esc(t.team_name)}</td>
-          <td class="lb-clues">${t.clues.size} / ${total}</td>
+          <td class="lb-clues">${t.maxClue} / ${total}</td>
           <td class="lb-time">${formatTime(t.latest)}</td>
         </tr>
       `).join('');
-
-      $content.innerHTML = `
+      return `
         <table class="lb-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Team</th>
-              <th>Clues Solved</th>
-              <th>Last Activity</th>
+              <th>#</th><th>Team</th><th>Clue</th><th>Last Solved</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       `;
-
-      stampTime();
     }
 
     function formatTime(isoString) {
