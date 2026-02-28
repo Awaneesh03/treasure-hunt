@@ -124,3 +124,13 @@ button:active { background: #000; }
   line-height: 1.6;
   color: #333;
 }
+
+/* Wrong-answer shake animation */
+@keyframes shake {
+  0%, 100% { transform: translateX(0);    }
+  20%       { transform: translateX(-7px); }
+  40%       { transform: translateX( 7px); }
+  60%       { transform: translateX(-5px); }
+  80%       { transform: translateX( 5px); }
+}
+.shake { animation: shake 0.35s ease; }

@@ -1,18 +1,18 @@
 // ============================================================
-//  Treasure Hunt – Participant Page Logic
-//  Each QR code links to:  yoursite.com/?clue=1
-//                           yoursite.com/?clue=2  etc.
-//  Depends on: config.js (SUPABASE_URL, SUPABASE_ANON_KEY)
+//  Treasure Hunt – Participant Page  (production-ready)
+//  URL format:  yoursite.com/?clue=1
+//  Requires:    config.js  →  SUPABASE_URL, SUPABASE_ANON_KEY
 // ============================================================
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TEAM_KEY = 'teamName';   // localStorage key
+const TEAM_KEY = 'teamName';          // localStorage key for team name
+const SOLVED_KEY = n => `solved_${n}`;// localStorage key per solved clue
 
 let currentQuestion = null;
 let clueNum         = null;
 let teamName        = null;
-let answered        = false;   // guard against re-submit after correct answer
+let answered        = false;  // guard against double-submit
 
 // ── DOM refs ──────────────────────────────────────────────────
 const $loading       = document.getElementById('loading');
@@ -34,20 +34,19 @@ const $clueText      = document.getElementById('clue-text');
 // ── Boot ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   $teamBtn.addEventListener('click', submitTeamName);
-  $teamInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') submitTeamName();
-  });
+  $teamInput.addEventListener('keypress', e => { if (e.key === 'Enter') submitTeamName(); });
 
   $submitBtn.addEventListener('click', checkAnswer);
-  $answerInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') checkAnswer();
-  });
+  $answerInput.addEventListener('keypress', e => { if (e.key === 'Enter') checkAnswer(); });
 
   init();
 });
 
-// ── Read URL param, decide whether to ask for team name ───────
+// ── Init: validate URL param, check sequential order, show team screen or question ──
 async function init() {
+  // Warm up Supabase connection so the first real query is instant
+  db.from('questions').select('id').limit(1).then(() => {});
+
   const params = new URLSearchParams(window.location.search);
   clueNum = parseInt(params.get('clue'), 10);
 
@@ -56,21 +55,24 @@ async function init() {
     return;
   }
 
-  // Check if team name is already stored
+  // Prevent skipping ahead: clue N requires clue N-1 to be solved first
+  if (clueNum > 1 && !localStorage.getItem(SOLVED_KEY(clueNum - 1))) {
+    showError(`You must solve Clue #${clueNum - 1} before this one!`);
+    return;
+  }
+
   teamName = localStorage.getItem(TEAM_KEY);
 
   if (!teamName) {
-    // Ask for team name before loading the question
     $loading.style.display    = 'none';
     $teamScreen.style.display = 'block';
     $teamInput.focus();
   } else {
-    // Team name known — go straight to the question
     await fetchQuestion();
   }
 }
 
-// ── Handle team name submission ───────────────────────────────
+// ── Team name submission ──────────────────────────────────────
 function submitTeamName() {
   const name = $teamInput.value.trim();
 
@@ -83,12 +85,14 @@ function submitTeamName() {
   teamName = name;
   localStorage.setItem(TEAM_KEY, teamName);
 
+  $teamBtn.disabled         = true;  // prevent double-tap
   $teamScreen.style.display = 'none';
   $loading.style.display    = 'block';
-  fetchQuestion();
+
+  fetchQuestion().finally(() => { $teamBtn.disabled = false; });
 }
 
-// ── Fetch the single question matching clueNum ────────────────
+// ── Fetch the single question for this clue number ────────────
 async function fetchQuestion() {
   const { data, error } = await db
     .from('questions')
@@ -97,7 +101,7 @@ async function fetchQuestion() {
     .single();
 
   if (error || !data) {
-    showError(`Clue #${clueNum} does not exist yet. Ask the organiser!`);
+    showError(`Clue #${clueNum} not found. Ask the organiser!`, true);
     return;
   }
 
@@ -110,14 +114,14 @@ async function fetchQuestion() {
   $answerInput.focus();
 }
 
-// ── Validate the answer ───────────────────────────────────────
+// ── Answer validation ─────────────────────────────────────────
 function checkAnswer() {
   if (answered) return;
 
   const userAnswer    = $answerInput.value.trim().toLowerCase();
   const correctAnswer = currentQuestion.answer.trim().toLowerCase();
 
-  if (userAnswer === '') return;
+  if (!userAnswer) return;
 
   if (userAnswer === correctAnswer) {
     answered              = true;
@@ -125,8 +129,7 @@ function checkAnswer() {
     $answerInput.disabled = true;
     setFeedback('Correct! ✓', 'correct');
 
-    // Save to Supabase in the background (don't block the UI)
-    saveProgress();
+    saveProgress();  // fire-and-forget
 
     setTimeout(() => {
       const clue = currentQuestion.clue;
@@ -137,25 +140,36 @@ function checkAnswer() {
 
   } else {
     setFeedback('Try again!', 'wrong');
+    // Shake the input field on wrong answer
+    $answerInput.classList.remove('shake');
+    void $answerInput.offsetWidth;       // force reflow to restart animation
+    $answerInput.classList.add('shake');
     $answerInput.select();
   }
 }
 
-// ── Insert a row into teams_progress ─────────────────────────
+// ── Save progress to Supabase with one retry ─────────────────
 async function saveProgress() {
-  const { error } = await db
-    .from('teams_progress')
-    .insert({
-      team_name:   teamName,
-      clue_number: clueNum,
-      solved_at:   new Date().toISOString()
-    });
+  const payload = {
+    team_name:   teamName,
+    clue_number: clueNum,
+    solved_at:   new Date().toISOString()
+  };
 
-  // Error code 23505 = Postgres unique violation (already saved before).
-  // This happens if the team refreshes the page and re-submits — safe to ignore.
+  let { error } = await db.from('teams_progress').insert(payload);
+
   if (error && error.code !== '23505') {
-    console.error('Could not save progress:', error.message);
+    // Retry once after 2 seconds
+    await new Promise(r => setTimeout(r, 2000));
+    ({ error } = await db.from('teams_progress').insert(payload));
+    if (error && error.code !== '23505') {
+      console.error('Progress save failed after retry:', error.message);
+      return;
+    }
   }
+
+  // Mark locally so sequential enforcement works on the next clue
+  localStorage.setItem(SOLVED_KEY(clueNum), '1');
 }
 
 // ── Reveal the clue box ───────────────────────────────────────
@@ -165,16 +179,28 @@ function showClue(clueText) {
   $clueSection.style.display   = 'block';
 }
 
-// ── Error screen ──────────────────────────────────────────────
-function showError(msg) {
+// ── Error screen (retryable shows a reload button) ────────────
+function showError(msg, retryable = false) {
   $loading.style.display      = 'none';
   $teamScreen.style.display   = 'none';
-  $errorDisplay.textContent   = msg;
+  $errorDisplay.innerHTML     = escHtml(msg)
+    + (retryable
+        ? '<br><br><button onclick="location.reload()" '
+          + 'style="padding:0.5rem 1rem;background:#333;color:#fff;border:none;'
+          + 'border-radius:5px;cursor:pointer;width:auto">Try Again</button>'
+        : '');
   $errorDisplay.style.display = 'block';
 }
 
-// ── Feedback helper ───────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 function setFeedback(text, type) {
   $feedback.textContent = text;
   $feedback.className   = `feedback ${type}`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

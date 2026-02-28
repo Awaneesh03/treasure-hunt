@@ -235,7 +235,10 @@
     <div id="section-leaderboard" style="display:none">
       <div class="lb-header">
         <h2>Team Leaderboard</h2>
-        <button class="btn-secondary" onclick="loadLeaderboard()">Refresh</button>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          <span id="lb-updated" style="font-size:0.78rem;color:#aaa"></span>
+          <button class="btn-secondary" onclick="loadLeaderboard()">Refresh</button>
+        </div>
       </div>
       <div class="lb-box">
         <div id="leaderboard-content"><p class="empty-state">Loading…</p></div>
@@ -274,6 +277,8 @@
     }
 
     function logout() {
+      clearInterval(lbTimer);
+      lbTimer                    = null;
       $adminPanel.style.display  = 'none';
       $loginScreen.style.display = 'block';
       $passwordInput.value       = '';
@@ -283,13 +288,22 @@
     $logoutBtn.addEventListener('click', logout);
     $passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
 
-    // ── Tab switching ───────────────────────────────────────────
+    // ── Tab switching (auto-refresh runs only while leaderboard is visible) ──
+    let lbTimer = null;
+
     function showTab(tab) {
       document.getElementById('section-questions').style.display   = tab === 'questions'   ? 'block' : 'none';
       document.getElementById('section-leaderboard').style.display = tab === 'leaderboard' ? 'block' : 'none';
       document.getElementById('tab-questions').classList.toggle('active',   tab === 'questions');
       document.getElementById('tab-leaderboard').classList.toggle('active', tab === 'leaderboard');
-      if (tab === 'leaderboard') loadLeaderboard();
+
+      if (tab === 'leaderboard') {
+        loadLeaderboard();
+        lbTimer = setInterval(loadLeaderboard, 10000);
+      } else {
+        clearInterval(lbTimer);
+        lbTimer = null;
+      }
     }
 
     // ── Load & render questions ─────────────────────────────────
@@ -422,13 +436,20 @@
         .select('team_name, clue_number, solved_at')
         .order('solved_at', { ascending: true });
 
+      const stampTime = () => {
+        document.getElementById('lb-updated').textContent =
+          'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      };
+
       if (error) {
         $content.innerHTML = '<p class="empty-state" style="color:#cc2222">Failed to load. Check Supabase.</p>';
+        stampTime();
         return;
       }
 
       if (!data || data.length === 0) {
         $content.innerHTML = '<p class="empty-state">No teams have solved any clues yet.</p>';
+        stampTime();
         return;
       }
 
@@ -472,6 +493,8 @@
           <tbody>${rows}</tbody>
         </table>
       `;
+
+      stampTime();
     }
 
     function formatTime(isoString) {
