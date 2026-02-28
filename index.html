@@ -10,7 +10,16 @@
   <div class="card">
 
     <!-- Loading state -->
-    <div id="loading" class="center">Loading questions…</div>
+    <div id="loading" class="center">Loading…</div>
+
+    <!-- Team name screen (shown once if team not yet registered) -->
+    <div id="team-screen" style="display:none">
+      <h1>Treasure Hunt</h1>
+      <p class="team-prompt">Enter your team name to begin</p>
+      <input type="text" id="team-input" placeholder="Team name…" maxlength="50" autocomplete="off" />
+      <button id="team-btn">Continue</button>
+      <p class="feedback" id="team-error"></p>
+    </div>
 
     <!-- Question card (shown during hunt) -->
     <div id="question-card" style="display:none">

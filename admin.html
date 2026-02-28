@@ -24,7 +24,6 @@
       box-shadow: 0 2px 12px rgba(0,0,0,0.1);
       text-align: center;
     }
-
     #login-screen h1 { margin-bottom: 1.25rem; font-size: 1.3rem; }
 
     /* ── Shared form elements ───────────────── */
@@ -40,12 +39,7 @@
       font-family: inherit;
       transition: border-color 0.15s;
     }
-
-    input:focus, textarea:focus {
-      outline: none;
-      border-color: #333;
-    }
-
+    input:focus, textarea:focus { outline: none; border-color: #333; }
     textarea { resize: vertical; min-height: 72px; }
 
     button {
@@ -56,29 +50,42 @@
       cursor: pointer;
       transition: background 0.15s;
     }
-
-    .btn-primary   { background: #1a1a1a; color: #fff; }
-    .btn-primary:hover   { background: #444; }
-
-    .btn-secondary { background: #eee; color: #333; }
-    .btn-secondary:hover { background: #ddd; }
-
-    .btn-danger    { background: #cc2222; color: #fff; }
-    .btn-danger:hover { background: #a81a1a; }
-
+    .btn-primary            { background: #1a1a1a; color: #fff; }
+    .btn-primary:hover      { background: #444; }
+    .btn-secondary          { background: #eee; color: #333; }
+    .btn-secondary:hover    { background: #ddd; }
+    .btn-danger             { background: #cc2222; color: #fff; }
+    .btn-danger:hover       { background: #a81a1a; }
     .btn-wide { width: 100%; margin-top: 0.75rem; }
 
-    /* ── Admin panel layout ─────────────────── */
+    /* ── Admin panel ────────────────────────── */
     #admin-panel { max-width: 760px; margin: 0 auto; }
 
     .panel-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .panel-header h1 { font-size: 1.4rem; }
+
+    /* ── Tab bar ────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 0.5rem;
       margin-bottom: 1.5rem;
     }
-
-    .panel-header h1 { font-size: 1.4rem; }
+    .tab-btn {
+      padding: 0.45rem 1.1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      color: #555;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
 
     /* ── Add-question box ───────────────────── */
     .add-box {
@@ -88,9 +95,7 @@
       margin-bottom: 1.5rem;
       box-shadow: 0 1px 6px rgba(0,0,0,0.08);
     }
-
     .add-box h2 { font-size: 1rem; margin-bottom: 1rem; }
-
     .form-row {
       display: grid;
       grid-template-columns: 90px 1fr;
@@ -98,7 +103,7 @@
       margin-bottom: 0.6rem;
     }
 
-    /* ── Questions list ─────────────────────── */
+    /* ── Question cards ─────────────────────── */
     .q-card {
       background: #fff;
       border-radius: 8px;
@@ -106,14 +111,7 @@
       margin-bottom: 0.75rem;
       box-shadow: 0 1px 5px rgba(0,0,0,0.07);
     }
-
-    /* View mode */
-    .q-view {
-      display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-
+    .q-view { display: flex; align-items: flex-start; gap: 1rem; }
     .order-badge {
       flex-shrink: 0;
       background: #1a1a1a;
@@ -124,23 +122,20 @@
       font-weight: 700;
       margin-top: 2px;
     }
-
     .q-body { flex: 1; min-width: 0; }
     .q-body .q-question { font-weight: 600; word-break: break-word; }
     .q-body .q-answer   { color: #555; font-size: 0.9rem; margin-top: 0.25rem; }
     .q-body .q-answer span { font-weight: 600; color: #222; }
     .q-body .q-clue     { color: #999; font-size: 0.85rem; margin-top: 0.2rem; font-style: italic; }
     .q-body .q-clue span { color: #666; font-style: normal; }
-
     .q-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
 
-    /* Edit mode */
     .q-edit { display: none; }
-    .q-edit .form-row { margin-bottom: 0.5rem; }
-    .q-edit textarea  { margin-bottom: 0.5rem; }
+    .q-edit .form-row   { margin-bottom: 0.5rem; }
+    .q-edit textarea    { margin-bottom: 0.5rem; }
     .q-edit .edit-actions { display: flex; gap: 0.5rem; }
 
-    /* Feedback / status */
+    /* ── Status bar ─────────────────────────── */
     .status-bar {
       padding: 0.5rem 0.75rem;
       border-radius: 6px;
@@ -152,8 +147,47 @@
     .status-bar.err { background: #f8d7da; color: #721c24; display: block; }
 
     .empty-state { text-align: center; color: #888; padding: 2rem 0; }
+    .login-err   { color: #cc2222; margin-top: 0.75rem; font-size: 0.9rem; display: none; }
 
-    .login-err { color: #cc2222; margin-top: 0.75rem; font-size: 0.9rem; display: none; }
+    /* ── Leaderboard ────────────────────────── */
+    .lb-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .lb-header h2 { font-size: 1.1rem; }
+
+    .lb-box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    }
+
+    .lb-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .lb-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 2px solid #eee;
+      color: #888;
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .lb-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #f0f0f0; }
+    .lb-table tr:last-child td  { border-bottom: none; }
+    .lb-table tbody tr:hover    { background: #fafafa; }
+
+    .lb-rank  { color: #aaa; font-size: 0.85rem; width: 2rem; }
+    .lb-name  { font-weight: 600; }
+    .lb-clues { color: #333; }
+    .lb-time  { color: #888; font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -170,47 +204,60 @@
   <div id="admin-panel" style="display:none">
 
     <div class="panel-header">
-      <h1>Manage Questions</h1>
+      <h1>Treasure Hunt Admin</h1>
       <button class="btn-secondary" id="logout-btn">Logout</button>
     </div>
 
-    <!-- Status messages -->
     <div class="status-bar" id="status-bar"></div>
 
-    <!-- Add new question -->
-    <div class="add-box">
-      <h2>Add New Question</h2>
-      <div class="form-row">
-        <input type="number" id="new-order" placeholder="Order #" min="1" />
-        <input type="text" id="new-answer" placeholder="Answer (exact, case-insensitive)" />
-      </div>
-      <textarea id="new-question" placeholder="Question text…"></textarea>
-      <textarea id="new-clue" placeholder="Clue shown after correct answer (optional)…"></textarea>
-      <button class="btn-primary btn-wide" id="add-btn">Add Question</button>
+    <!-- Tab buttons -->
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-questions"   onclick="showTab('questions')">Questions</button>
+      <button class="tab-btn"        id="tab-leaderboard" onclick="showTab('leaderboard')">Leaderboard</button>
     </div>
 
-    <!-- Questions list -->
-    <div id="questions-list"></div>
+    <!-- ── Questions tab ── -->
+    <div id="section-questions">
+      <div class="add-box">
+        <h2>Add New Question</h2>
+        <div class="form-row">
+          <input type="number" id="new-order"  placeholder="Order #" min="1" />
+          <input type="text"   id="new-answer" placeholder="Answer (exact, case-insensitive)" />
+        </div>
+        <textarea id="new-question" placeholder="Question text…"></textarea>
+        <textarea id="new-clue"     placeholder="Clue shown after correct answer (optional)…"></textarea>
+        <button class="btn-primary btn-wide" id="add-btn">Add Question</button>
+      </div>
+      <div id="questions-list"></div>
+    </div>
+
+    <!-- ── Leaderboard tab ── -->
+    <div id="section-leaderboard" style="display:none">
+      <div class="lb-header">
+        <h2>Team Leaderboard</h2>
+        <button class="btn-secondary" onclick="loadLeaderboard()">Refresh</button>
+      </div>
+      <div class="lb-box">
+        <div id="leaderboard-content"><p class="empty-state">Loading…</p></div>
+      </div>
+    </div>
 
   </div>
 
-  <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script>
-    // ── Supabase client ─────────────────────────────────────────
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ── DOM refs ────────────────────────────────────────────────
-    const $loginScreen  = document.getElementById('login-screen');
-    const $adminPanel   = document.getElementById('admin-panel');
-    const $passwordInput= document.getElementById('password-input');
-    const $loginBtn     = document.getElementById('login-btn');
-    const $loginErr     = document.getElementById('login-err');
-    const $logoutBtn    = document.getElementById('logout-btn');
-    const $statusBar    = document.getElementById('status-bar');
-    const $list         = document.getElementById('questions-list');
-    const $addBtn       = document.getElementById('add-btn');
+    const $loginScreen   = document.getElementById('login-screen');
+    const $adminPanel    = document.getElementById('admin-panel');
+    const $passwordInput = document.getElementById('password-input');
+    const $loginBtn      = document.getElementById('login-btn');
+    const $loginErr      = document.getElementById('login-err');
+    const $logoutBtn     = document.getElementById('logout-btn');
+    const $statusBar     = document.getElementById('status-bar');
+    const $list          = document.getElementById('questions-list');
+    const $addBtn        = document.getElementById('add-btn');
 
     // ── Login / Logout ──────────────────────────────────────────
     function login() {
@@ -234,34 +281,35 @@
 
     $loginBtn.addEventListener('click', login);
     $logoutBtn.addEventListener('click', logout);
-    $passwordInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
-    });
+    $passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
+
+    // ── Tab switching ───────────────────────────────────────────
+    function showTab(tab) {
+      document.getElementById('section-questions').style.display   = tab === 'questions'   ? 'block' : 'none';
+      document.getElementById('section-leaderboard').style.display = tab === 'leaderboard' ? 'block' : 'none';
+      document.getElementById('tab-questions').classList.toggle('active',   tab === 'questions');
+      document.getElementById('tab-leaderboard').classList.toggle('active', tab === 'leaderboard');
+      if (tab === 'leaderboard') loadLeaderboard();
+    }
 
     // ── Load & render questions ─────────────────────────────────
     async function loadQuestions() {
       $list.innerHTML = '<p class="empty-state">Loading…</p>';
-
       const { data, error } = await db
         .from('questions')
         .select('*')
         .order('order_number', { ascending: true });
-
-      if (error) { showStatus('Failed to load questions: ' + error.message, 'err'); return; }
-
-      render(data || []);
+      if (error) { showStatus('Failed to load: ' + error.message, 'err'); return; }
+      renderQuestions(data || []);
     }
 
-    function render(qs) {
+    function renderQuestions(qs) {
       if (qs.length === 0) {
         $list.innerHTML = '<p class="empty-state">No questions yet. Add one above.</p>';
         return;
       }
-
       $list.innerHTML = qs.map(q => `
         <div class="q-card" id="q-${q.id}">
-
-          <!-- View mode -->
           <div class="q-view">
             <span class="order-badge">#${q.order_number}</span>
             <div class="q-body">
@@ -274,8 +322,6 @@
               <button class="btn-danger"    onclick="deleteQ(${q.id})">Delete</button>
             </div>
           </div>
-
-          <!-- Edit mode (hidden by default) -->
           <div class="q-edit" id="edit-${q.id}">
             <div class="form-row">
               <input type="number" id="eo-${q.id}" value="${q.order_number}" placeholder="Order #" min="1" />
@@ -288,7 +334,6 @@
               <button class="btn-secondary" onclick="cancelEdit(${q.id})">Cancel</button>
             </div>
           </div>
-
         </div>
       `).join('');
     }
@@ -309,15 +354,13 @@
       const { error } = await db
         .from('questions')
         .insert({ order_number: order, question, answer, clue: clue || null });
-
       $addBtn.disabled = false;
 
-      if (error) { showStatus('Error adding question: ' + error.message, 'err'); return; }
+      if (error) { showStatus('Error: ' + error.message, 'err'); return; }
 
-      document.getElementById('new-order').value    = '';
-      document.getElementById('new-question').value = '';
-      document.getElementById('new-answer').value   = '';
-      document.getElementById('new-clue').value     = '';
+      ['new-order', 'new-question', 'new-answer', 'new-clue'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
       showStatus('Question added!', 'ok');
       loadQuestions();
     });
@@ -349,8 +392,7 @@
         .update({ order_number: order, question, answer, clue: clue || null })
         .eq('id', id);
 
-      if (error) { showStatus('Error saving: ' + error.message, 'err'); return; }
-
+      if (error) { showStatus('Error: ' + error.message, 'err'); return; }
       showStatus('Saved!', 'ok');
       loadQuestions();
     }
@@ -358,19 +400,85 @@
     // ── Delete question ─────────────────────────────────────────
     async function deleteQ(id) {
       if (!confirm('Delete this question? This cannot be undone.')) return;
-
-      const { error } = await db
-        .from('questions')
-        .delete()
-        .eq('id', id);
-
-      if (error) { showStatus('Error deleting: ' + error.message, 'err'); return; }
-
-      showStatus('Question deleted.', 'ok');
+      const { error } = await db.from('questions').delete().eq('id', id);
+      if (error) { showStatus('Error: ' + error.message, 'err'); return; }
+      showStatus('Deleted.', 'ok');
       loadQuestions();
     }
 
-    // ── Status bar helper ───────────────────────────────────────
+    // ── Leaderboard ─────────────────────────────────────────────
+    async function loadLeaderboard() {
+      const $content = document.getElementById('leaderboard-content');
+      $content.innerHTML = '<p class="empty-state">Loading…</p>';
+
+      // Fetch total question count for the "X / total" display
+      const { count: totalCount } = await db
+        .from('questions')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch all progress rows, oldest first so the last row per team = most recent
+      const { data, error } = await db
+        .from('teams_progress')
+        .select('team_name, clue_number, solved_at')
+        .order('solved_at', { ascending: true });
+
+      if (error) {
+        $content.innerHTML = '<p class="empty-state" style="color:#cc2222">Failed to load. Check Supabase.</p>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        $content.innerHTML = '<p class="empty-state">No teams have solved any clues yet.</p>';
+        return;
+      }
+
+      // Group rows by team name
+      const teamsMap = {};
+      data.forEach(row => {
+        if (!teamsMap[row.team_name]) {
+          teamsMap[row.team_name] = { team_name: row.team_name, clues: new Set(), latest: null };
+        }
+        teamsMap[row.team_name].clues.add(row.clue_number);
+        teamsMap[row.team_name].latest = row.solved_at;  // ascending → last = most recent
+      });
+
+      // Sort: most clues first; ties broken by earliest last-activity (finished sooner)
+      const sorted = Object.values(teamsMap).sort((a, b) => {
+        if (b.clues.size !== a.clues.size) return b.clues.size - a.clues.size;
+        return new Date(a.latest) - new Date(b.latest);
+      });
+
+      const total = totalCount ?? '?';
+
+      const rows = sorted.map((t, i) => `
+        <tr>
+          <td class="lb-rank">${i + 1}</td>
+          <td class="lb-name">${esc(t.team_name)}</td>
+          <td class="lb-clues">${t.clues.size} / ${total}</td>
+          <td class="lb-time">${formatTime(t.latest)}</td>
+        </tr>
+      `).join('');
+
+      $content.innerHTML = `
+        <table class="lb-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Team</th>
+              <th>Clues Solved</th>
+              <th>Last Activity</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function formatTime(isoString) {
+      return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── Status bar ──────────────────────────────────────────────
     let statusTimer;
     function showStatus(msg, type) {
       $statusBar.textContent = msg;

@@ -94,6 +94,13 @@ button:active { background: #000; }
 .center { text-align: center; color: #888; }
 .err    { color: #cc2222; text-align: center; }
 
+/* Team name screen */
+.team-prompt {
+  color: #555;
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+}
+
 /* ── Clue box ───────────────────────────────── */
 .clue-box {
   background: #fffbe6;
