@@ -41,11 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 });
 
-// ── Init: read URL param, show team screen or load question directly ──
+// ── Init: validate URL, enforce team name before anything else ──
 async function init() {
-  // Warm up Supabase connection so the first real query is instant
-  db.from('questions').select('id').limit(1).then(() => {});
-
   const params = new URLSearchParams(window.location.search);
   clueNum = parseInt(params.get('clue'), 10);
 
@@ -57,12 +54,16 @@ async function init() {
   teamName = localStorage.getItem(TEAM_KEY);
 
   if (!teamName) {
-    $loading.style.display    = 'none';
-    $teamScreen.style.display = 'block';
+    $loading.style.display      = 'none';
+    $questionCard.style.display = 'none';   // explicit guard
+    $teamScreen.style.display   = 'block';
     $teamInput.focus();
-  } else {
-    await fetchQuestion();
+    return;                                 // hard stop — no fetch until team name set
   }
+
+  // Team name confirmed — safe to proceed
+  db.from('questions').select('id').limit(1).then(() => {});  // warm-up
+  await fetchQuestion();
 }
 
 // ── Team name submission ──────────────────────────────────────
@@ -85,26 +86,41 @@ function submitTeamName() {
   fetchQuestion().finally(() => { $teamBtn.disabled = false; });
 }
 
-// ── Fetch the single question for this clue number ────────────
+// ── Fetch question with sequential validation per team ────────
 async function fetchQuestion() {
   const clueNumber = Number(clueNum);
-
-  // Debug: confirm what clue number was read from the URL
-  console.log('[TreasureHunt] clue param from URL:', clueNumber);
 
   if (!clueNumber || clueNumber < 1) {
     showError('Invalid QR code.');
     return;
   }
 
+  // ── 1. Count solved clues for this team ──────────────────────
+  const { count, error: countError } = await db
+    .from('teams_progress')
+    .select('*', { count: 'exact', head: true })
+    .eq('team_name', teamName);
+
+  if (countError) {
+    showError('Could not verify your progress. Please try again.', true);
+    return;
+  }
+
+  const solvedCount = count ?? 0;
+  const allowedClue = solvedCount + 1;
+
+  // ── 2. Block if skipping ahead ───────────────────────────────
+  if (clueNumber > allowedClue) {
+    showError(`You must solve Clue #${allowedClue} first.`);
+    return;
+  }
+
+  // ── 3. Fetch question from DB ────────────────────────────────
   const { data, error } = await db
     .from('questions')
     .select('id, order_number, question, answer, clue')
     .eq('order_number', clueNumber)
     .single();
-
-  // Debug: confirm what Supabase returned
-  console.log('[TreasureHunt] Supabase result:', { clueNumber, data, error });
 
   if (error || !data) {
     showError('This clue does not exist.');
@@ -117,6 +133,14 @@ async function fetchQuestion() {
   $questionCard.style.display = 'block';
   $progress.textContent       = `Clue #${clueNumber}  ·  ${teamName}`;
   $questionText.textContent   = data.question;
+
+  // ── 4. Already solved — show clue, hide answer form ─────────
+  if (clueNumber < allowedClue) {
+    showClue(data.clue?.trim() || 'You already solved this clue!');
+    return;
+  }
+
+  // ── 5. Exact next clue — allow answering ─────────────────────
   $answerInput.focus();
 }
 
