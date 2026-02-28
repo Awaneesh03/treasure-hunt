@@ -94,14 +94,27 @@ function submitTeamName() {
 
 // ── Fetch the single question for this clue number ────────────
 async function fetchQuestion() {
+  const clueNumber = Number(clueNum);
+
+  // Debug: confirm what clue number was read from the URL
+  console.log('[TreasureHunt] clue param from URL:', clueNumber);
+
+  if (!clueNumber || clueNumber < 1) {
+    showError('Invalid QR code.');
+    return;
+  }
+
   const { data, error } = await db
     .from('questions')
     .select('id, order_number, question, answer, clue')
-    .eq('order_number', clueNum)
+    .eq('order_number', clueNumber)
     .single();
 
+  // Debug: confirm what Supabase returned
+  console.log('[TreasureHunt] Supabase result:', { clueNumber, data, error });
+
   if (error || !data) {
-    showError(`Clue #${clueNum} not found. Ask the organiser!`, true);
+    showError('This clue does not exist.');
     return;
   }
 
@@ -109,7 +122,7 @@ async function fetchQuestion() {
 
   $loading.style.display      = 'none';
   $questionCard.style.display = 'block';
-  $progress.textContent       = `Clue #${clueNum}  ·  ${teamName}`;
+  $progress.textContent       = `Clue #${clueNumber}  ·  ${teamName}`;
   $questionText.textContent   = data.question;
   $answerInput.focus();
 }
