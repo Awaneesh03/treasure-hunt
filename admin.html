@@ -214,6 +214,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" id="tab-questions"   onclick="showTab('questions')">Questions</button>
       <button class="tab-btn"        id="tab-leaderboard" onclick="showTab('leaderboard')">Leaderboard</button>
+      <button class="tab-btn"        id="tab-reset"       onclick="showTab('reset')">Reset</button>
     </div>
 
     <!-- ── Questions tab ── -->
@@ -229,6 +230,20 @@
         <button class="btn-primary btn-wide" id="add-btn">Add Question</button>
       </div>
       <div id="questions-list"></div>
+    </div>
+
+    <!-- ── Reset tab ── -->
+    <div id="section-reset" style="display:none">
+      <div class="add-box" style="border:2px solid #cc2222">
+        <h2 style="color:#cc2222">Danger Zone</h2>
+        <p style="color:#555;font-size:0.9rem;margin:0.75rem 0 1.25rem">
+          Deletes <strong>all team progress</strong> from <code>teams_progress</code>.
+          Questions are not affected. Use this to reset between test runs.
+        </p>
+        <button class="btn-danger btn-wide" id="reset-progress-btn" onclick="resetProgress()">
+          Reset All Team Progress
+        </button>
+      </div>
     </div>
 
     <!-- ── Leaderboard tab ── -->
@@ -294,8 +309,10 @@
     function showTab(tab) {
       document.getElementById('section-questions').style.display   = tab === 'questions'   ? 'block' : 'none';
       document.getElementById('section-leaderboard').style.display = tab === 'leaderboard' ? 'block' : 'none';
+      document.getElementById('section-reset').style.display       = tab === 'reset'       ? 'block' : 'none';
       document.getElementById('tab-questions').classList.toggle('active',   tab === 'questions');
       document.getElementById('tab-leaderboard').classList.toggle('active', tab === 'leaderboard');
+      document.getElementById('tab-reset').classList.toggle('active',       tab === 'reset');
 
       if (tab === 'leaderboard') {
         loadLeaderboard();
@@ -304,6 +321,27 @@
         clearInterval(lbTimer);
         lbTimer = null;
       }
+    }
+
+    // ── Reset all team progress ──────────────────────────────────
+    async function resetProgress() {
+      if (!confirm('Delete ALL team progress? This cannot be undone.')) return;
+      if (!confirm('Second confirm: wipe the entire leaderboard?'))     return;
+
+      const $btn = document.getElementById('reset-progress-btn');
+      $btn.disabled    = true;
+      $btn.textContent = 'Resetting…';
+
+      const { error } = await db
+        .from('teams_progress')
+        .delete()
+        .not('team_name', 'is', null);   // matches every row (team_name is NOT NULL)
+
+      $btn.disabled    = false;
+      $btn.textContent = 'Reset All Team Progress';
+
+      if (error) { showStatus('Reset failed: ' + error.message, 'err'); return; }
+      showStatus('All team progress cleared.', 'ok');
     }
 
     // ── Load & render questions ─────────────────────────────────
