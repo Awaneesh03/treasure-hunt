@@ -7,20 +7,24 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const PROGRESS_KEY = 'huntProgress';
 
-let questions    = [];   // all questions sorted by order_number
-let currentIndex = 0;   // index of the question currently on screen
-let isSubmitting = false; // guard against double-submit
+let questions    = [];
+let currentIndex = 0;
+let isSubmitting = false;
 
 // ── DOM refs ──────────────────────────────────────────────────
-const $loading      = document.getElementById('loading');
-const $questionCard = document.getElementById('question-card');
-const $completed    = document.getElementById('completed');
-const $errorDisplay = document.getElementById('error-display');
-const $progress     = document.getElementById('progress');
-const $questionText = document.getElementById('question-text');
-const $answerInput  = document.getElementById('answer-input');
-const $submitBtn    = document.getElementById('submit-btn');
-const $feedback     = document.getElementById('feedback');
+const $loading       = document.getElementById('loading');
+const $questionCard  = document.getElementById('question-card');
+const $completed     = document.getElementById('completed');
+const $errorDisplay  = document.getElementById('error-display');
+const $progress      = document.getElementById('progress');
+const $questionText  = document.getElementById('question-text');
+const $answerSection = document.getElementById('answer-section');
+const $answerInput   = document.getElementById('answer-input');
+const $submitBtn     = document.getElementById('submit-btn');
+const $feedback      = document.getElementById('feedback');
+const $clueSection   = document.getElementById('clue-section');
+const $clueText      = document.getElementById('clue-text');
+const $nextBtn       = document.getElementById('next-btn');
 
 // ── Boot ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,14 +32,15 @@ document.addEventListener('DOMContentLoaded', () => {
   $answerInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') checkAnswer();
   });
+  $nextBtn.addEventListener('click', goNext);
   init();
 });
 
-// ── Fetch all questions once, then restore progress ───────────
+// ── Fetch all questions once, restore saved progress ──────────
 async function init() {
   const { data, error } = await db
     .from('questions')
-    .select('id, order_number, question, answer')
+    .select('id, order_number, question, answer, clue')
     .order('order_number', { ascending: true });
 
   if (error) {
@@ -51,7 +56,6 @@ async function init() {
   questions    = data;
   currentIndex = parseInt(localStorage.getItem(PROGRESS_KEY) || '0', 10);
 
-  // Sanitise saved value in case questions were deleted
   if (isNaN(currentIndex) || currentIndex < 0) currentIndex = 0;
 
   if (currentIndex >= questions.length) {
@@ -61,21 +65,20 @@ async function init() {
   }
 }
 
-// ── Render a question by index ────────────────────────────────
+// ── Render a question ─────────────────────────────────────────
 function showQuestion(index) {
-  // Hide every other section
   $loading.style.display      = 'none';
   $completed.style.display    = 'none';
   $errorDisplay.style.display = 'none';
-
-  // Show question card
   $questionCard.style.display = 'block';
 
-  // Populate content
+  // Always start with answer section visible, clue hidden
+  $answerSection.style.display = 'block';
+  $clueSection.style.display   = 'none';
+
   $progress.textContent     = `Question ${index + 1} of ${questions.length}`;
   $questionText.textContent = questions[index].question;
 
-  // Reset input and feedback for the new question
   $answerInput.value    = '';
   $answerInput.disabled = false;
   $submitBtn.disabled   = false;
@@ -86,39 +89,61 @@ function showQuestion(index) {
   $answerInput.focus();
 }
 
-// ── Validate answer and advance ───────────────────────────────
+// ── Validate answer ───────────────────────────────────────────
 function checkAnswer() {
-  // Prevent double-submit while transitioning
   if (isSubmitting) return;
 
   const userAnswer    = $answerInput.value.trim().toLowerCase();
   const correctAnswer = questions[currentIndex].answer.trim().toLowerCase();
 
-  if (userAnswer === '') return;  // ignore empty submit
+  if (userAnswer === '') return;
 
   if (userAnswer === correctAnswer) {
-    // Lock UI immediately so user can't submit twice
     isSubmitting          = true;
     $submitBtn.disabled   = true;
     $answerInput.disabled = true;
     setFeedback('Correct! ✓', 'correct');
 
-    // Advance index and persist progress
+    // Advance index and save progress immediately
     currentIndex++;
     localStorage.setItem(PROGRESS_KEY, String(currentIndex));
 
-    // Brief pause so user sees the "Correct!" feedback, then move on
+    const clue = questions[currentIndex - 1].clue;  // clue belongs to the question just answered
+
     setTimeout(() => {
-      if (currentIndex >= questions.length) {
-        showCompleted();
+      if (clue && clue.trim() !== '') {
+        // Show the clue — user must click "Next Question" to proceed
+        showClue(clue.trim());
       } else {
-        showQuestion(currentIndex);   // ← next clue appears here
+        // No clue — advance automatically
+        advanceOrComplete();
       }
-    }, 800);
+    }, 600);
 
   } else {
     setFeedback('Try again!', 'wrong');
     $answerInput.select();
+  }
+}
+
+// ── Show the clue box ─────────────────────────────────────────
+function showClue(clueText) {
+  $answerSection.style.display = 'none';   // hide input + submit
+  $clueText.textContent        = clueText;
+  $clueSection.style.display   = 'block';  // show clue + next button
+}
+
+// ── "Next Question →" button handler ─────────────────────────
+function goNext() {
+  advanceOrComplete();
+}
+
+// ── Move to next question or show completion ──────────────────
+function advanceOrComplete() {
+  if (currentIndex >= questions.length) {
+    showCompleted();
+  } else {
+    showQuestion(currentIndex);
   }
 }
 
@@ -128,7 +153,6 @@ function showCompleted() {
   $questionCard.style.display = 'none';
   $errorDisplay.style.display = 'none';
   $completed.style.display    = 'block';
-  // Clear saved progress so a fresh start is possible on next visit
   localStorage.removeItem(PROGRESS_KEY);
 }
 

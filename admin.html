@@ -129,6 +129,8 @@
     .q-body .q-question { font-weight: 600; word-break: break-word; }
     .q-body .q-answer   { color: #555; font-size: 0.9rem; margin-top: 0.25rem; }
     .q-body .q-answer span { font-weight: 600; color: #222; }
+    .q-body .q-clue     { color: #999; font-size: 0.85rem; margin-top: 0.2rem; font-style: italic; }
+    .q-body .q-clue span { color: #666; font-style: normal; }
 
     .q-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
 
@@ -183,6 +185,7 @@
         <input type="text" id="new-answer" placeholder="Answer (exact, case-insensitive)" />
       </div>
       <textarea id="new-question" placeholder="Question text…"></textarea>
+      <textarea id="new-clue" placeholder="Clue shown after correct answer (optional)…"></textarea>
       <button class="btn-primary btn-wide" id="add-btn">Add Question</button>
     </div>
 
@@ -264,6 +267,7 @@
             <div class="q-body">
               <p class="q-question">${esc(q.question)}</p>
               <p class="q-answer">Answer: <span>${esc(q.answer)}</span></p>
+              <p class="q-clue">Clue: <span>${q.clue ? esc(q.clue) : '—'}</span></p>
             </div>
             <div class="q-actions">
               <button class="btn-secondary" onclick="startEdit(${q.id})">Edit</button>
@@ -278,6 +282,7 @@
               <input type="text"   id="ea-${q.id}" value="${esc(q.answer)}"  placeholder="Answer" />
             </div>
             <textarea id="eq-${q.id}">${esc(q.question)}</textarea>
+            <textarea id="ec-${q.id}" placeholder="Clue (optional)…">${q.clue ? esc(q.clue) : ''}</textarea>
             <div class="edit-actions">
               <button class="btn-primary"   onclick="saveEdit(${q.id})">Save</button>
               <button class="btn-secondary" onclick="cancelEdit(${q.id})">Cancel</button>
@@ -293,16 +298,17 @@
       const order    = parseInt(document.getElementById('new-order').value, 10);
       const question = document.getElementById('new-question').value.trim();
       const answer   = document.getElementById('new-answer').value.trim();
+      const clue     = document.getElementById('new-clue').value.trim();
 
       if (!order || !question || !answer) {
-        showStatus('Please fill in all three fields (order, question, answer).', 'err');
+        showStatus('Please fill in order, question, and answer (clue is optional).', 'err');
         return;
       }
 
       $addBtn.disabled = true;
       const { error } = await db
         .from('questions')
-        .insert({ order_number: order, question, answer });
+        .insert({ order_number: order, question, answer, clue: clue || null });
 
       $addBtn.disabled = false;
 
@@ -311,6 +317,7 @@
       document.getElementById('new-order').value    = '';
       document.getElementById('new-question').value = '';
       document.getElementById('new-answer').value   = '';
+      document.getElementById('new-clue').value     = '';
       showStatus('Question added!', 'ok');
       loadQuestions();
     });
@@ -330,15 +337,16 @@
       const order    = parseInt(document.getElementById(`eo-${id}`).value, 10);
       const question = document.getElementById(`eq-${id}`).value.trim();
       const answer   = document.getElementById(`ea-${id}`).value.trim();
+      const clue     = document.getElementById(`ec-${id}`).value.trim();
 
       if (!order || !question || !answer) {
-        showStatus('All fields are required.', 'err');
+        showStatus('Order, question, and answer are required.', 'err');
         return;
       }
 
       const { error } = await db
         .from('questions')
-        .update({ order_number: order, question, answer })
+        .update({ order_number: order, question, answer, clue: clue || null })
         .eq('id', id);
 
       if (error) { showStatus('Error saving: ' + error.message, 'err'); return; }
