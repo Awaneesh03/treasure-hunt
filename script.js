@@ -5,14 +5,13 @@
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Progress is stored in localStorage so a page refresh keeps their place.
-// Value = the index (0-based) of the question they should see next.
 const PROGRESS_KEY = 'huntProgress';
 
-let questions    = [];   // all questions, sorted by order_number
-let currentIndex = 0;   // which question is on screen right now
+let questions    = [];   // all questions sorted by order_number
+let currentIndex = 0;   // index of the question currently on screen
+let isSubmitting = false; // guard against double-submit
 
-// ── DOM references ────────────────────────────────────────────
+// ── DOM refs ──────────────────────────────────────────────────
 const $loading      = document.getElementById('loading');
 const $questionCard = document.getElementById('question-card');
 const $completed    = document.getElementById('completed');
@@ -26,16 +25,13 @@ const $feedback     = document.getElementById('feedback');
 // ── Boot ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   $submitBtn.addEventListener('click', checkAnswer);
-
-  // Allow pressing Enter to submit
   $answerInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') checkAnswer();
   });
-
   init();
 });
 
-// ── Fetch questions and decide where to start ─────────────────
+// ── Fetch all questions once, then restore progress ───────────
 async function init() {
   const { data, error } = await db
     .from('questions')
@@ -43,19 +39,19 @@ async function init() {
     .order('order_number', { ascending: true });
 
   if (error) {
-    showError('Could not load questions. Check your Supabase config in config.js.');
+    showError('Could not load questions. Check your Supabase config.');
     return;
   }
 
   if (!data || data.length === 0) {
-    showError('No questions found. Add some using the admin panel.');
+    showError('No questions found. Add some from the admin panel.');
     return;
   }
 
   questions    = data;
   currentIndex = parseInt(localStorage.getItem(PROGRESS_KEY) || '0', 10);
 
-  // Clamp in case questions were deleted since last visit
+  // Sanitise saved value in case questions were deleted
   if (isNaN(currentIndex) || currentIndex < 0) currentIndex = 0;
 
   if (currentIndex >= questions.length) {
@@ -65,73 +61,85 @@ async function init() {
   }
 }
 
-// ── Display a question ────────────────────────────────────────
+// ── Render a question by index ────────────────────────────────
 function showQuestion(index) {
-  hide($loading);
-  show($questionCard);
-  hide($completed);
+  // Hide every other section
+  $loading.style.display      = 'none';
+  $completed.style.display    = 'none';
+  $errorDisplay.style.display = 'none';
 
-  const q = questions[index];
+  // Show question card
+  $questionCard.style.display = 'block';
+
+  // Populate content
   $progress.textContent     = `Question ${index + 1} of ${questions.length}`;
-  $questionText.textContent = q.question;
-  $answerInput.value        = '';
-  $feedback.textContent     = '';
-  $feedback.className       = 'feedback';
+  $questionText.textContent = questions[index].question;
+
+  // Reset input and feedback for the new question
+  $answerInput.value    = '';
+  $answerInput.disabled = false;
+  $submitBtn.disabled   = false;
+  $feedback.textContent = '';
+  $feedback.className   = 'feedback';
+  isSubmitting          = false;
+
   $answerInput.focus();
 }
 
-// ── Check the submitted answer ────────────────────────────────
+// ── Validate answer and advance ───────────────────────────────
 function checkAnswer() {
+  // Prevent double-submit while transitioning
+  if (isSubmitting) return;
+
   const userAnswer    = $answerInput.value.trim().toLowerCase();
   const correctAnswer = questions[currentIndex].answer.trim().toLowerCase();
 
-  if (userAnswer === '') return;   // ignore empty submit
+  if (userAnswer === '') return;  // ignore empty submit
 
   if (userAnswer === correctAnswer) {
-    // Correct!
+    // Lock UI immediately so user can't submit twice
+    isSubmitting          = true;
+    $submitBtn.disabled   = true;
+    $answerInput.disabled = true;
     setFeedback('Correct! ✓', 'correct');
-    $submitBtn.disabled    = true;
-    $answerInput.disabled  = true;
 
+    // Advance index and persist progress
     currentIndex++;
     localStorage.setItem(PROGRESS_KEY, String(currentIndex));
 
+    // Brief pause so user sees the "Correct!" feedback, then move on
     setTimeout(() => {
-      $submitBtn.disabled   = false;
-      $answerInput.disabled = false;
-
       if (currentIndex >= questions.length) {
         showCompleted();
       } else {
-        showQuestion(currentIndex);
+        showQuestion(currentIndex);   // ← next clue appears here
       }
-    }, 900);
+    }, 800);
 
   } else {
-    // Wrong
     setFeedback('Try again!', 'wrong');
     $answerInput.select();
   }
 }
 
-// ── Show the completion screen ────────────────────────────────
+// ── Completion screen ─────────────────────────────────────────
 function showCompleted() {
-  hide($loading);
-  hide($questionCard);
-  show($completed);
+  $loading.style.display      = 'none';
+  $questionCard.style.display = 'none';
+  $errorDisplay.style.display = 'none';
+  $completed.style.display    = 'block';
+  // Clear saved progress so a fresh start is possible on next visit
+  localStorage.removeItem(PROGRESS_KEY);
 }
 
-// ── Show an error message ─────────────────────────────────────
+// ── Error screen ──────────────────────────────────────────────
 function showError(msg) {
-  hide($loading);
-  $errorDisplay.textContent = msg;
-  show($errorDisplay);
+  $loading.style.display      = 'none';
+  $errorDisplay.textContent   = msg;
+  $errorDisplay.style.display = 'block';
 }
 
-// ── Helpers ───────────────────────────────────────────────────
-function show(el) { el.style.display = 'block'; }
-function hide(el) { el.style.display = 'none';  }
-
+// ── Feedback helper ───────────────────────────────────────────
 function setFeedback(text, type) {
   $feedback.textContent = text;
   $feedback.className   = `feedback ${type}`;
