@@ -157,9 +157,13 @@ async function fetchQuestion() {
     return;
   }
 
-  // ── 1. Sole source of truth: count actual progress rows ──────
-  //       Excludes clue_number=0 registration row.
-  //       If DB reset → count=0 → allowedClue=1.
+  // groupName must be set before this runs (via init() DB check or submitTeamName())
+  if (!groupName) {
+    showError('Group not set. Please clear your browser data and re-register.', true);
+    return;
+  }
+
+  // ── 1. Count actual progress rows for this team (excl. registration row) ──
   const { count, error: countError } = await db
     .from('teams_progress')
     .select('*', { count: 'exact', head: true })
@@ -171,10 +175,11 @@ async function fetchQuestion() {
     return;
   }
 
-  const solvedCount = count ?? 0;   // 0 when DB empty or after reset
+  const solvedCount = count ?? 0;
   const allowedClue = solvedCount + 1;
 
-  console.log('[TreasureHunt] team:', teamName, '| solvedCount:', solvedCount, '| allowedClue:', allowedClue, '| requested:', clueNumber);
+  console.log('[TreasureHunt] team:', teamName, '| group:', groupName,
+    '| solved:', solvedCount, '| allowed:', allowedClue, '| requested:', clueNumber);
 
   // ── 2. Block if skipping ahead ───────────────────────────────
   if (clueNumber > allowedClue) {
@@ -182,20 +187,21 @@ async function fetchQuestion() {
     return;
   }
 
-  // ── 3. Load question from DB ─────────────────────────────────
+  // ── 3. Fetch by group_name + group_clue_number (per-group numbering) ──
   const { data, error } = await db
     .from('questions')
-    .select('id, order_number, question, answer, clue')
-    .eq('order_number', clueNumber)
+    .select('id, group_name, group_clue_number, question, answer, clue')
+    .eq('group_name', groupName)
+    .eq('group_clue_number', clueNumber)
     .single();
 
   if (error || !data) {
-    showError('This clue does not exist.');
+    showError('This clue does not exist for your group.');
     return;
   }
 
   currentQuestion = data;
-  answered = false;  // reset guard for this page load
+  answered = false;
 
   $loading.style.display      = 'none';
   $questionCard.style.display = 'block';

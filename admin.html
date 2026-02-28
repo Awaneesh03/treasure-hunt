@@ -102,6 +102,17 @@
       gap: 0.6rem;
       margin-bottom: 0.6rem;
     }
+    .form-row-3 { grid-template-columns: 90px 70px 1fr; }
+    select {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: #fff;
+    }
+    select:focus { outline: none; border-color: #333; }
 
     /* ── Question cards ─────────────────────── */
     .q-card {
@@ -250,9 +261,14 @@
     <div id="section-questions">
       <div class="add-box">
         <h2>Add New Question</h2>
-        <div class="form-row">
-          <input type="number" id="new-order"  placeholder="Order #" min="1" />
-          <input type="text"   id="new-answer" placeholder="Answer (exact, case-insensitive)" />
+        <div class="form-row form-row-3">
+          <select id="new-group">
+            <option value="">Group…</option>
+            <option value="red">Red</option>
+            <option value="blue">Blue</option>
+          </select>
+          <input type="number" id="new-group-clue" placeholder="Clue #" min="1" />
+          <input type="text"   id="new-answer"     placeholder="Answer (exact, case-insensitive)" />
         </div>
         <textarea id="new-question" placeholder="Question text…"></textarea>
         <textarea id="new-clue"     placeholder="Clue shown after correct answer (optional)…"></textarea>
@@ -386,7 +402,8 @@
       const { data, error } = await db
         .from('questions')
         .select('*')
-        .order('order_number', { ascending: true });
+        .order('group_name',       { ascending: true })
+        .order('group_clue_number', { ascending: true });
       if (error) { showStatus('Failed to load: ' + error.message, 'err'); return; }
       renderQuestions(data || []);
     }
@@ -396,10 +413,13 @@
         $list.innerHTML = '<p class="empty-state">No questions yet. Add one above.</p>';
         return;
       }
-      $list.innerHTML = qs.map(q => `
+      $list.innerHTML = qs.map(q => {
+        const badgeBg = q.group_name === 'red' ? '#b03030' : q.group_name === 'blue' ? '#1f5fa6' : '#555';
+        const badge   = `${(q.group_name || '?').toUpperCase()} #${q.group_clue_number ?? '?'}`;
+        return `
         <div class="q-card" id="q-${q.id}">
           <div class="q-view">
-            <span class="order-badge">#${q.order_number}</span>
+            <span class="order-badge" style="background:${badgeBg}">${badge}</span>
             <div class="q-body">
               <p class="q-question">${esc(q.question)}</p>
               <p class="q-answer">Answer: <span>${esc(q.answer)}</span></p>
@@ -411,9 +431,13 @@
             </div>
           </div>
           <div class="q-edit" id="edit-${q.id}">
-            <div class="form-row">
-              <input type="number" id="eo-${q.id}" value="${q.order_number}" placeholder="Order #" min="1" />
-              <input type="text"   id="ea-${q.id}" value="${esc(q.answer)}"  placeholder="Answer" />
+            <div class="form-row form-row-3">
+              <select id="eg-${q.id}">
+                <option value="red"  ${q.group_name === 'red'  ? 'selected' : ''}>Red</option>
+                <option value="blue" ${q.group_name === 'blue' ? 'selected' : ''}>Blue</option>
+              </select>
+              <input type="number" id="egc-${q.id}" value="${q.group_clue_number ?? ''}" placeholder="Clue #" min="1" />
+              <input type="text"   id="ea-${q.id}"  value="${esc(q.answer)}" placeholder="Answer" />
             </div>
             <textarea id="eq-${q.id}">${esc(q.question)}</textarea>
             <textarea id="ec-${q.id}" placeholder="Clue (optional)…">${q.clue ? esc(q.clue) : ''}</textarea>
@@ -422,31 +446,33 @@
               <button class="btn-secondary" onclick="cancelEdit(${q.id})">Cancel</button>
             </div>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
 
     // ── Add question ────────────────────────────────────────────
     $addBtn.addEventListener('click', async () => {
-      const order    = parseInt(document.getElementById('new-order').value, 10);
+      const group    = document.getElementById('new-group').value;
+      const groupClue = parseInt(document.getElementById('new-group-clue').value, 10);
       const question = document.getElementById('new-question').value.trim();
       const answer   = document.getElementById('new-answer').value.trim();
       const clue     = document.getElementById('new-clue').value.trim();
 
-      if (!order || !question || !answer) {
-        showStatus('Please fill in order, question, and answer (clue is optional).', 'err');
+      if (!group || !groupClue || !question || !answer) {
+        showStatus('Please fill in group, clue number, question, and answer.', 'err');
         return;
       }
 
       $addBtn.disabled = true;
       const { error } = await db
         .from('questions')
-        .insert({ order_number: order, question, answer, clue: clue || null });
+        .insert({ group_name: group, group_clue_number: groupClue, question, answer, clue: clue || null });
       $addBtn.disabled = false;
 
       if (error) { showStatus('Error: ' + error.message, 'err'); return; }
 
-      ['new-order', 'new-question', 'new-answer', 'new-clue'].forEach(id => {
+      document.getElementById('new-group').selectedIndex = 0;
+      ['new-group-clue', 'new-question', 'new-answer', 'new-clue'].forEach(id => {
         document.getElementById(id).value = '';
       });
       showStatus('Question added!', 'ok');
@@ -465,19 +491,20 @@
     }
 
     async function saveEdit(id) {
-      const order    = parseInt(document.getElementById(`eo-${id}`).value, 10);
-      const question = document.getElementById(`eq-${id}`).value.trim();
-      const answer   = document.getElementById(`ea-${id}`).value.trim();
-      const clue     = document.getElementById(`ec-${id}`).value.trim();
+      const group     = document.getElementById(`eg-${id}`).value;
+      const groupClue = parseInt(document.getElementById(`egc-${id}`).value, 10);
+      const question  = document.getElementById(`eq-${id}`).value.trim();
+      const answer    = document.getElementById(`ea-${id}`).value.trim();
+      const clue      = document.getElementById(`ec-${id}`).value.trim();
 
-      if (!order || !question || !answer) {
-        showStatus('Order, question, and answer are required.', 'err');
+      if (!group || !groupClue || !question || !answer) {
+        showStatus('Group, clue number, question, and answer are required.', 'err');
         return;
       }
 
       const { error } = await db
         .from('questions')
-        .update({ order_number: order, question, answer, clue: clue || null })
+        .update({ group_name: group, group_clue_number: groupClue, question, answer, clue: clue || null })
         .eq('id', id);
 
       if (error) { showStatus('Error: ' + error.message, 'err'); return; }
@@ -506,15 +533,10 @@
           'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       };
 
-      // Total question count for "X / total" column
-      const { count: totalCount } = await db
-        .from('questions')
-        .select('*', { count: 'exact', head: true });
-
-      const total = totalCount ?? '?';
-
-      // Fetch red and blue separately — exclude registration rows (clue_number = 0)
-      const [redResult, blueResult] = await Promise.all([
+      // Per-group question counts + progress rows — all parallel
+      const [redCountRes, blueCountRes, redResult, blueResult] = await Promise.all([
+        db.from('questions').select('*', { count: 'exact', head: true }).eq('group_name', 'red'),
+        db.from('questions').select('*', { count: 'exact', head: true }).eq('group_name', 'blue'),
         db.from('teams_progress')
           .select('team_name, clue_number, solved_at')
           .eq('group_name', 'red')
@@ -527,14 +549,17 @@
           .order('solved_at', { ascending: true })
       ]);
 
+      const redTotal  = redCountRes.count  ?? '?';
+      const blueTotal = blueCountRes.count ?? '?';
+
       // Only show error on actual Supabase error; empty array = "no activity"
       $red.innerHTML  = redResult.error
         ? '<p class="empty-state" style="color:#cc2222">Failed to load red teams.</p>'
-        : renderGroup(aggregateTeams(redResult.data || []), total);
+        : renderGroup(aggregateTeams(redResult.data || []), redTotal);
 
       $blue.innerHTML = blueResult.error
         ? '<p class="empty-state" style="color:#cc2222">Failed to load blue teams.</p>'
-        : renderGroup(aggregateTeams(blueResult.data || []), total);
+        : renderGroup(aggregateTeams(blueResult.data || []), blueTotal);
 
       stampTime();
     }
