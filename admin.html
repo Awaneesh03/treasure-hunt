@@ -1,373 +1,512 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin – Treasure Hunt</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f2f2f2;
-      min-height: 100vh;
-      padding: 1.5rem 1rem;
-    }
-
-    /* ── Login screen ───────────────────────── */
-    #login-screen {
-      max-width: 360px;
-      margin: 8vh auto 0;
-      background: #fff;
-      border-radius: 10px;
-      padding: 2rem;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    #login-screen h1 { margin-bottom: 1.25rem; font-size: 1.3rem; }
-
-    /* ── Shared form elements ───────────────── */
-    input[type="text"],
-    input[type="number"],
-    input[type="password"],
-    textarea {
-      width: 100%;
-      padding: 0.65rem 0.85rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      font-family: inherit;
-      transition: border-color 0.15s;
-    }
-    input:focus, textarea:focus { outline: none; border-color: #333; }
-    textarea { resize: vertical; min-height: 72px; }
-
-    button {
-      padding: 0.6rem 1.1rem;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-primary            { background: #1a1a1a; color: #fff; }
-    .btn-primary:hover      { background: #444; }
-    .btn-secondary          { background: #eee; color: #333; }
-    .btn-secondary:hover    { background: #ddd; }
-    .btn-danger             { background: #cc2222; color: #fff; }
-    .btn-danger:hover       { background: #a81a1a; }
-    .btn-wide { width: 100%; margin-top: 0.75rem; }
-
-    /* ── Admin panel ────────────────────────── */
-    #admin-panel { max-width: 760px; margin: 0 auto; }
-
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.25rem;
-    }
-    .panel-header h1 { font-size: 1.4rem; }
-
-    /* ── Tab bar ────────────────────────────── */
-    .tab-bar {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
-    }
-    .tab-btn {
-      padding: 0.45rem 1.1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      background: #fff;
-      color: #555;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .tab-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-
-    /* ── Add-question box ───────────────────── */
-    .add-box {
-      background: #fff;
-      border-radius: 10px;
-      padding: 1.25rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-    }
-    .add-box h2 { font-size: 1rem; margin-bottom: 1rem; }
-    .form-row {
-      display: grid;
-      grid-template-columns: 90px 1fr;
-      gap: 0.6rem;
-      margin-bottom: 0.6rem;
-    }
-
-    /* ── Question cards ─────────────────────── */
-    .q-card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 1rem 1.1rem;
-      margin-bottom: 0.75rem;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.07);
-    }
-    .q-view { display: flex; align-items: flex-start; gap: 1rem; }
-    .order-badge {
-      flex-shrink: 0;
-      background: #1a1a1a;
-      color: #fff;
-      border-radius: 4px;
-      padding: 0.2rem 0.5rem;
-      font-size: 0.8rem;
-      font-weight: 700;
-      margin-top: 2px;
-    }
-    .q-body { flex: 1; min-width: 0; }
-    .q-body .q-question { font-weight: 600; word-break: break-word; }
-    .q-body .q-answer   { color: #555; font-size: 0.9rem; margin-top: 0.25rem; }
-    .q-body .q-answer span { font-weight: 600; color: #222; }
-    .q-body .q-clue     { color: #999; font-size: 0.85rem; margin-top: 0.2rem; font-style: italic; }
-    .q-body .q-clue span { color: #666; font-style: normal; }
-    .q-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
-
-    .q-edit { display: none; }
-    .q-edit .form-row   { margin-bottom: 0.5rem; }
-    .q-edit textarea    { margin-bottom: 0.5rem; }
-    .q-edit .edit-actions { display: flex; gap: 0.5rem; }
-
-    /* ── Status bar ─────────────────────────── */
-    .status-bar {
-      padding: 0.5rem 0.75rem;
-      border-radius: 6px;
-      margin-bottom: 1rem;
-      font-size: 0.9rem;
-      display: none;
-    }
-    .status-bar.ok  { background: #d4edda; color: #155724; display: block; }
-    .status-bar.err { background: #f8d7da; color: #721c24; display: block; }
-
-    .empty-state { text-align: center; color: #888; padding: 2rem 0; }
-    .login-err   { color: #cc2222; margin-top: 0.75rem; font-size: 0.9rem; display: none; }
-
-    /* ── Leaderboard ────────────────────────── */
-    .lb-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1rem;
-    }
-    .lb-header h2 { font-size: 1.1rem; }
-
-    .lb-box {
-      background: #fff;
-      border-radius: 10px;
-      padding: 1.25rem;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-    }
-
-    .lb-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-    .lb-table th {
-      text-align: left;
-      padding: 0.5rem 0.75rem;
-      border-bottom: 2px solid #eee;
-      color: #888;
-      font-weight: 600;
-      font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-    .lb-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #f0f0f0; }
-    .lb-table tr:last-child td  { border-bottom: none; }
-    .lb-table tbody tr:hover    { background: #fafafa; }
-
-    .lb-rank  { color: #aaa; font-size: 0.85rem; width: 2rem; }
-    .lb-name  { font-weight: 600; }
-    .lb-clues { color: #333; }
-    .lb-time  { color: #888; font-size: 0.85rem; }
-  </style>
-</head>
-<body>
-
-  <!-- ══════════════ LOGIN SCREEN ══════════════ -->
-  <div id="login-screen">
-    <h1>Admin Login</h1>
-    <input type="password" id="password-input" placeholder="Enter admin password" />
-    <button class="btn-primary btn-wide" id="login-btn">Login</button>
-    <p class="login-err" id="login-err">Incorrect password. Try again.</p>
-  </div>
-
-  <!-- ══════════════ ADMIN PANEL ══════════════ -->
-  <div id="admin-panel" style="display:none">
-
-    <div class="panel-header">
-      <h1>Treasure Hunt Admin</h1>
-      <button class="btn-secondary" id="logout-btn">Logout</button>
-    </div>
-
-    <div class="status-bar" id="status-bar"></div>
-
-    <!-- Tab buttons -->
-    <div class="tab-bar">
-      <button class="tab-btn active" id="tab-questions"   onclick="showTab('questions')">Questions</button>
-      <button class="tab-btn"        id="tab-leaderboard" onclick="showTab('leaderboard')">Leaderboard</button>
-      <button class="tab-btn"        id="tab-reset"       onclick="showTab('reset')">Reset</button>
-    </div>
-
-    <!-- ── Questions tab ── -->
-    <div id="section-questions">
-      <div class="add-box">
-        <h2>Add New Question</h2>
-        <div class="form-row">
-          <input type="number" id="new-order"  placeholder="Order #" min="1" />
-          <input type="text"   id="new-answer" placeholder="Answer (exact, case-insensitive)" />
-        </div>
-        <textarea id="new-question" placeholder="Question text…"></textarea>
-        <textarea id="new-clue"     placeholder="Clue shown after correct answer (optional)…"></textarea>
-        <button class="btn-primary btn-wide" id="add-btn">Add Question</button>
-      </div>
-      <div id="questions-list"></div>
-    </div>
-
-    <!-- ── Reset tab ── -->
-    <div id="section-reset" style="display:none">
-      <div class="add-box" style="border:2px solid #cc2222">
-        <h2 style="color:#cc2222">Danger Zone</h2>
-        <p style="color:#555;font-size:0.9rem;margin:0.75rem 0 1.25rem">
-          Deletes <strong>all team progress</strong> from <code>teams_progress</code>.
-          Questions are not affected. Use this to reset between test runs.
-        </p>
-        <button class="btn-danger btn-wide" id="reset-progress-btn" onclick="resetProgress()">
-          Reset All Team Progress
-        </button>
-      </div>
-    </div>
-
-    <!-- ── Leaderboard tab ── -->
-    <div id="section-leaderboard" style="display:none">
-      <div class="lb-header">
-        <h2>Team Leaderboard</h2>
-        <div style="display:flex;align-items:center;gap:0.75rem">
-          <span id="lb-updated" style="font-size:0.78rem;color:#aaa"></span>
-          <button class="btn-secondary" onclick="loadLeaderboard()">Refresh</button>
-        </div>
-      </div>
-      <div class="lb-box">
-        <div id="leaderboard-content"><p class="empty-state">Loading…</p></div>
-      </div>
-    </div>
-
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script>
-    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const $loginScreen   = document.getElementById('login-screen');
-    const $adminPanel    = document.getElementById('admin-panel');
-    const $passwordInput = document.getElementById('password-input');
-    const $loginBtn      = document.getElementById('login-btn');
-    const $loginErr      = document.getElementById('login-err');
-    const $logoutBtn     = document.getElementById('logout-btn');
-    const $statusBar     = document.getElementById('status-bar');
-    const $list          = document.getElementById('questions-list');
-    const $addBtn        = document.getElementById('add-btn');
-
-    // ── Login / Logout ──────────────────────────────────────────
-    function login() {
-      if ($passwordInput.value === ADMIN_PASSWORD) {
-        $loginScreen.style.display = 'none';
-        $adminPanel.style.display  = 'block';
-        $loginErr.style.display    = 'none';
-        loadQuestions();
-      } else {
-        $loginErr.style.display = 'block';
-        $passwordInput.value    = '';
-        $passwordInput.focus();
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Treasure Hunt</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-    }
 
-    function logout() {
-      clearInterval(lbTimer);
-      lbTimer                    = null;
-      $adminPanel.style.display  = 'none';
-      $loginScreen.style.display = 'block';
-      $passwordInput.value       = '';
-    }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f2f2f2;
+        min-height: 100vh;
+        padding: 1.5rem 1rem;
+      }
 
-    $loginBtn.addEventListener('click', login);
-    $logoutBtn.addEventListener('click', logout);
-    $passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
+      /* ── Login screen ───────────────────────── */
+      #login-screen {
+        max-width: 360px;
+        margin: 8vh auto 0;
+        background: #fff;
+        border-radius: 10px;
+        padding: 2rem;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      #login-screen h1 {
+        margin-bottom: 1.25rem;
+        font-size: 1.3rem;
+      }
 
-    // ── Tab switching (auto-refresh runs only while leaderboard is visible) ──
-    let lbTimer = null;
+      /* ── Shared form elements ───────────────── */
+      input[type="text"],
+      input[type="number"],
+      input[type="password"],
+      textarea {
+        width: 100%;
+        padding: 0.65rem 0.85rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        transition: border-color 0.15s;
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #333;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
 
-    function showTab(tab) {
-      document.getElementById('section-questions').style.display   = tab === 'questions'   ? 'block' : 'none';
-      document.getElementById('section-leaderboard').style.display = tab === 'leaderboard' ? 'block' : 'none';
-      document.getElementById('section-reset').style.display       = tab === 'reset'       ? 'block' : 'none';
-      document.getElementById('tab-questions').classList.toggle('active',   tab === 'questions');
-      document.getElementById('tab-leaderboard').classList.toggle('active', tab === 'leaderboard');
-      document.getElementById('tab-reset').classList.toggle('active',       tab === 'reset');
+      button {
+        padding: 0.6rem 1.1rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .btn-primary {
+        background: #1a1a1a;
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: #444;
+      }
+      .btn-secondary {
+        background: #eee;
+        color: #333;
+      }
+      .btn-secondary:hover {
+        background: #ddd;
+      }
+      .btn-danger {
+        background: #cc2222;
+        color: #fff;
+      }
+      .btn-danger:hover {
+        background: #a81a1a;
+      }
+      .btn-wide {
+        width: 100%;
+        margin-top: 0.75rem;
+      }
 
-      if (tab === 'leaderboard') {
-        loadLeaderboard();
-        lbTimer = setInterval(loadLeaderboard, 10000);
-      } else {
+      /* ── Admin panel ────────────────────────── */
+      #admin-panel {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+      }
+      .panel-header h1 {
+        font-size: 1.4rem;
+      }
+
+      /* ── Tab bar ────────────────────────────── */
+      .tab-bar {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+      .tab-btn {
+        padding: 0.45rem 1.1rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fff;
+        color: #555;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .tab-btn.active {
+        background: #1a1a1a;
+        color: #fff;
+        border-color: #1a1a1a;
+      }
+
+      /* ── Add-question box ───────────────────── */
+      .add-box {
+        background: #fff;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+      }
+      .add-box h2 {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+      }
+      .form-row {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+      }
+
+      /* ── Question cards ─────────────────────── */
+      .q-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.07);
+      }
+      .q-view {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      .order-badge {
+        flex-shrink: 0;
+        background: #1a1a1a;
+        color: #fff;
+        border-radius: 4px;
+        padding: 0.2rem 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-top: 2px;
+      }
+      .q-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .q-body .q-question {
+        font-weight: 600;
+        word-break: break-word;
+      }
+      .q-body .q-answer {
+        color: #555;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+      }
+      .q-body .q-answer span {
+        font-weight: 600;
+        color: #222;
+      }
+      .q-body .q-clue {
+        color: #999;
+        font-size: 0.85rem;
+        margin-top: 0.2rem;
+        font-style: italic;
+      }
+      .q-body .q-clue span {
+        color: #666;
+        font-style: normal;
+      }
+      .q-actions {
+        display: flex;
+        gap: 0.4rem;
+        flex-shrink: 0;
+      }
+
+      .q-edit {
+        display: none;
+      }
+      .q-edit .form-row {
+        margin-bottom: 0.5rem;
+      }
+      .q-edit textarea {
+        margin-bottom: 0.5rem;
+      }
+      .q-edit .edit-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      /* ── Status bar ─────────────────────────── */
+      .status-bar {
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        display: none;
+      }
+      .status-bar.ok {
+        background: #d4edda;
+        color: #155724;
+        display: block;
+      }
+      .status-bar.err {
+        background: #f8d7da;
+        color: #721c24;
+        display: block;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: #888;
+        padding: 2rem 0;
+      }
+      .login-err {
+        color: #cc2222;
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        display: none;
+      }
+
+      /* ── Leaderboard ────────────────────────── */
+      .lb-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+      }
+      .lb-header h2 {
+        font-size: 1.1rem;
+      }
+
+      .lb-box {
+        background: #fff;
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .lb-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+      .lb-table th {
+        text-align: left;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 2px solid #eee;
+        color: #888;
+        font-weight: 600;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      .lb-table td {
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .lb-table tr:last-child td {
+        border-bottom: none;
+      }
+      .lb-table tbody tr:hover {
+        background: #fafafa;
+      }
+
+      .lb-rank {
+        color: #aaa;
+        font-size: 0.85rem;
+        width: 2rem;
+      }
+      .lb-name {
+        font-weight: 600;
+      }
+      .lb-clues {
+        color: #333;
+      }
+      .lb-time {
+        color: #888;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ══════════════ LOGIN SCREEN ══════════════ -->
+    <div id="login-screen">
+      <h1>Admin Login</h1>
+      <input type="password" id="password-input" placeholder="Enter admin password" />
+      <button class="btn-primary btn-wide" id="login-btn">Login</button>
+      <p class="login-err" id="login-err">Incorrect password. Try again.</p>
+    </div>
+
+    <!-- ══════════════ ADMIN PANEL ══════════════ -->
+    <div id="admin-panel" style="display: none">
+      <div class="panel-header">
+        <h1>Treasure Hunt Admin</h1>
+        <button class="btn-secondary" id="logout-btn">Logout</button>
+      </div>
+
+      <div class="status-bar" id="status-bar"></div>
+
+      <!-- Tab buttons -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-questions" onclick="showTab('questions')">
+          Questions
+        </button>
+        <button class="tab-btn" id="tab-leaderboard" onclick="showTab('leaderboard')">
+          Leaderboard
+        </button>
+        <button class="tab-btn" id="tab-reset" onclick="showTab('reset')">Reset</button>
+      </div>
+
+      <!-- ── Questions tab ── -->
+      <div id="section-questions">
+        <div class="add-box">
+          <h2>Add New Question</h2>
+          <div class="form-row">
+            <input type="number" id="new-order" placeholder="Order #" min="1" />
+            <input type="text" id="new-answer" placeholder="Answer (exact, case-insensitive)" />
+          </div>
+          <textarea id="new-question" placeholder="Question text…"></textarea>
+          <textarea
+            id="new-clue"
+            placeholder="Clue shown after correct answer (optional)…"
+          ></textarea>
+          <button class="btn-primary btn-wide" id="add-btn">Add Question</button>
+        </div>
+        <div id="questions-list"></div>
+      </div>
+
+      <!-- ── Reset tab ── -->
+      <div id="section-reset" style="display: none">
+        <div class="add-box" style="border: 2px solid #cc2222">
+          <h2 style="color: #cc2222">Danger Zone</h2>
+          <p style="color: #555; font-size: 0.9rem; margin: 0.75rem 0 1.25rem">
+            Deletes <strong>all team progress</strong> from <code>teams_progress</code>. Questions
+            are not affected. Use this to reset between test runs.
+          </p>
+          <button class="btn-danger btn-wide" id="reset-progress-btn" onclick="resetProgress()">
+            Reset All Team Progress
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Leaderboard tab ── -->
+      <div id="section-leaderboard" style="display: none">
+        <div class="lb-header">
+          <h2>Team Leaderboard</h2>
+          <div style="display: flex; align-items: center; gap: 0.75rem">
+            <span id="lb-updated" style="font-size: 0.78rem; color: #aaa"></span>
+            <button class="btn-secondary" onclick="loadLeaderboard()">Refresh</button>
+          </div>
+        </div>
+        <div class="lb-box">
+          <div id="leaderboard-content"><p class="empty-state">Loading…</p></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script>
+      const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const $loginScreen = document.getElementById("login-screen");
+      const $adminPanel = document.getElementById("admin-panel");
+      const $passwordInput = document.getElementById("password-input");
+      const $loginBtn = document.getElementById("login-btn");
+      const $loginErr = document.getElementById("login-err");
+      const $logoutBtn = document.getElementById("logout-btn");
+      const $statusBar = document.getElementById("status-bar");
+      const $list = document.getElementById("questions-list");
+      const $addBtn = document.getElementById("add-btn");
+
+      // ── Login / Logout ──────────────────────────────────────────
+      function login() {
+        if ($passwordInput.value === ADMIN_PASSWORD) {
+          $loginScreen.style.display = "none";
+          $adminPanel.style.display = "block";
+          $loginErr.style.display = "none";
+          loadQuestions();
+        } else {
+          $loginErr.style.display = "block";
+          $passwordInput.value = "";
+          $passwordInput.focus();
+        }
+      }
+
+      function logout() {
         clearInterval(lbTimer);
         lbTimer = null;
+        $adminPanel.style.display = "none";
+        $loginScreen.style.display = "block";
+        $passwordInput.value = "";
       }
-    }
 
-    // ── Reset all team progress ──────────────────────────────────
-    async function resetProgress() {
-      if (!confirm('Delete ALL team progress? This cannot be undone.')) return;
-      if (!confirm('Second confirm: wipe the entire leaderboard?'))     return;
+      $loginBtn.addEventListener("click", login);
+      $logoutBtn.addEventListener("click", logout);
+      $passwordInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") login();
+      });
 
-      const $btn = document.getElementById('reset-progress-btn');
-      $btn.disabled    = true;
-      $btn.textContent = 'Resetting…';
+      // ── Tab switching (auto-refresh runs only while leaderboard is visible) ──
+      let lbTimer = null;
 
-      const { error } = await db
-        .from('teams_progress')
-        .delete()
-        .not('team_name', 'is', null);   // matches every row (team_name is NOT NULL)
+      function showTab(tab) {
+        document.getElementById("section-questions").style.display =
+          tab === "questions" ? "block" : "none";
+        document.getElementById("section-leaderboard").style.display =
+          tab === "leaderboard" ? "block" : "none";
+        document.getElementById("section-reset").style.display = tab === "reset" ? "block" : "none";
+        document.getElementById("tab-questions").classList.toggle("active", tab === "questions");
+        document
+          .getElementById("tab-leaderboard")
+          .classList.toggle("active", tab === "leaderboard");
+        document.getElementById("tab-reset").classList.toggle("active", tab === "reset");
 
-      $btn.disabled    = false;
-      $btn.textContent = 'Reset All Team Progress';
-
-      if (error) { showStatus('Reset failed: ' + error.message, 'err'); return; }
-      showStatus('All team progress cleared.', 'ok');
-    }
-
-    // ── Load & render questions ─────────────────────────────────
-    async function loadQuestions() {
-      $list.innerHTML = '<p class="empty-state">Loading…</p>';
-      const { data, error } = await db
-        .from('questions')
-        .select('*')
-        .order('order_number', { ascending: true });
-      if (error) { showStatus('Failed to load: ' + error.message, 'err'); return; }
-      renderQuestions(data || []);
-    }
-
-    function renderQuestions(qs) {
-      if (qs.length === 0) {
-        $list.innerHTML = '<p class="empty-state">No questions yet. Add one above.</p>';
-        return;
+        if (tab === "leaderboard") {
+          loadLeaderboard();
+          lbTimer = setInterval(loadLeaderboard, 10000);
+        } else {
+          clearInterval(lbTimer);
+          lbTimer = null;
+        }
       }
-      $list.innerHTML = qs.map(q => `
+
+      // ── Reset all team progress ──────────────────────────────────
+      async function resetProgress() {
+        if (!confirm("Delete ALL team progress? This cannot be undone.")) return;
+        if (!confirm("Second confirm: wipe the entire leaderboard?")) return;
+
+        const $btn = document.getElementById("reset-progress-btn");
+        $btn.disabled = true;
+        $btn.textContent = "Resetting…";
+
+        const { error } = await db.from("teams_progress").delete().not("team_name", "is", null); // matches every row (team_name is NOT NULL)
+
+        $btn.disabled = false;
+        $btn.textContent = "Reset All Team Progress";
+
+        if (error) {
+          showStatus("Reset failed: " + error.message, "err");
+          return;
+        }
+        showStatus("All team progress cleared.", "ok");
+      }
+
+      // ── Load & render questions ─────────────────────────────────
+      async function loadQuestions() {
+        $list.innerHTML = '<p class="empty-state">Loading…</p>';
+        const { data, error } = await db
+          .from("questions")
+          .select("*")
+          .order("order_number", { ascending: true });
+        if (error) {
+          showStatus("Failed to load: " + error.message, "err");
+          return;
+        }
+        renderQuestions(data || []);
+      }
+
+      function renderQuestions(qs) {
+        if (qs.length === 0) {
+          $list.innerHTML = '<p class="empty-state">No questions yet. Add one above.</p>';
+          return;
+        }
+        $list.innerHTML = qs
+          .map(
+            (q) => `
         <div class="q-card" id="q-${q.id}">
           <div class="q-view">
             <span class="order-badge">#${q.order_number}</span>
             <div class="q-body">
               <p class="q-question">${esc(q.question)}</p>
               <p class="q-answer">Answer: <span>${esc(q.answer)}</span></p>
-              <p class="q-clue">Clue: <span>${q.clue ? esc(q.clue) : '—'}</span></p>
+              <p class="q-clue">Clue: <span>${q.clue ? esc(q.clue) : "—"}</span></p>
             </div>
             <div class="q-actions">
               <button class="btn-secondary" onclick="startEdit(${q.id})">Edit</button>
@@ -380,145 +519,166 @@
               <input type="text"   id="ea-${q.id}" value="${esc(q.answer)}"  placeholder="Answer" />
             </div>
             <textarea id="eq-${q.id}">${esc(q.question)}</textarea>
-            <textarea id="ec-${q.id}" placeholder="Clue (optional)…">${q.clue ? esc(q.clue) : ''}</textarea>
+            <textarea id="ec-${q.id}" placeholder="Clue (optional)…">${q.clue ? esc(q.clue) : ""}</textarea>
             <div class="edit-actions">
               <button class="btn-primary"   onclick="saveEdit(${q.id})">Save</button>
               <button class="btn-secondary" onclick="cancelEdit(${q.id})">Cancel</button>
             </div>
           </div>
         </div>
-      `).join('');
-    }
-
-    // ── Add question ────────────────────────────────────────────
-    $addBtn.addEventListener('click', async () => {
-      const order    = parseInt(document.getElementById('new-order').value, 10);
-      const question = document.getElementById('new-question').value.trim();
-      const answer   = document.getElementById('new-answer').value.trim();
-      const clue     = document.getElementById('new-clue').value.trim();
-
-      if (!order || !question || !answer) {
-        showStatus('Please fill in order, question, and answer (clue is optional).', 'err');
-        return;
+      `,
+          )
+          .join("");
       }
 
-      $addBtn.disabled = true;
-      const { error } = await db
-        .from('questions')
-        .insert({ order_number: order, question, answer, clue: clue || null });
-      $addBtn.disabled = false;
+      // ── Add question ────────────────────────────────────────────
+      $addBtn.addEventListener("click", async () => {
+        const order = parseInt(document.getElementById("new-order").value, 10);
+        const question = document.getElementById("new-question").value.trim();
+        const answer = document.getElementById("new-answer").value.trim();
+        const clue = document.getElementById("new-clue").value.trim();
 
-      if (error) { showStatus('Error: ' + error.message, 'err'); return; }
-
-      ['new-order', 'new-question', 'new-answer', 'new-clue'].forEach(id => {
-        document.getElementById(id).value = '';
-      });
-      showStatus('Question added!', 'ok');
-      loadQuestions();
-    });
-
-    // ── Edit helpers ────────────────────────────────────────────
-    function startEdit(id) {
-      document.querySelector(`#q-${id} .q-view`).style.display = 'none';
-      document.getElementById(`edit-${id}`).style.display      = 'block';
-    }
-
-    function cancelEdit(id) {
-      document.querySelector(`#q-${id} .q-view`).style.display = 'flex';
-      document.getElementById(`edit-${id}`).style.display      = 'none';
-    }
-
-    async function saveEdit(id) {
-      const order    = parseInt(document.getElementById(`eo-${id}`).value, 10);
-      const question = document.getElementById(`eq-${id}`).value.trim();
-      const answer   = document.getElementById(`ea-${id}`).value.trim();
-      const clue     = document.getElementById(`ec-${id}`).value.trim();
-
-      if (!order || !question || !answer) {
-        showStatus('Order, question, and answer are required.', 'err');
-        return;
-      }
-
-      const { error } = await db
-        .from('questions')
-        .update({ order_number: order, question, answer, clue: clue || null })
-        .eq('id', id);
-
-      if (error) { showStatus('Error: ' + error.message, 'err'); return; }
-      showStatus('Saved!', 'ok');
-      loadQuestions();
-    }
-
-    // ── Delete question ─────────────────────────────────────────
-    async function deleteQ(id) {
-      if (!confirm('Delete this question? This cannot be undone.')) return;
-      const { error } = await db.from('questions').delete().eq('id', id);
-      if (error) { showStatus('Error: ' + error.message, 'err'); return; }
-      showStatus('Deleted.', 'ok');
-      loadQuestions();
-    }
-
-    // ── Leaderboard ─────────────────────────────────────────────
-    async function loadLeaderboard() {
-      const $content = document.getElementById('leaderboard-content');
-      $content.innerHTML = '<p class="empty-state">Loading…</p>';
-
-      // Fetch total question count for the "X / total" display
-      const { count: totalCount } = await db
-        .from('questions')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch all progress rows, oldest first so the last row per team = most recent
-      const { data, error } = await db
-        .from('teams_progress')
-        .select('team_name, clue_number, solved_at')
-        .order('solved_at', { ascending: true });
-
-      const stampTime = () => {
-        document.getElementById('lb-updated').textContent =
-          'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      };
-
-      if (error) {
-        $content.innerHTML = '<p class="empty-state" style="color:#cc2222">Failed to load. Check Supabase.</p>';
-        stampTime();
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        $content.innerHTML = '<p class="empty-state">No teams have solved any clues yet.</p>';
-        stampTime();
-        return;
-      }
-
-      // Group rows by team name
-      const teamsMap = {};
-      data.forEach(row => {
-        if (!teamsMap[row.team_name]) {
-          teamsMap[row.team_name] = { team_name: row.team_name, clues: new Set(), latest: null };
+        if (!order || !question || !answer) {
+          showStatus("Please fill in order, question, and answer (clue is optional).", "err");
+          return;
         }
-        teamsMap[row.team_name].clues.add(row.clue_number);
-        teamsMap[row.team_name].latest = row.solved_at;  // ascending → last = most recent
+
+        $addBtn.disabled = true;
+        const { error } = await db
+          .from("questions")
+          .insert({ order_number: order, question, answer, clue: clue || null });
+        $addBtn.disabled = false;
+
+        if (error) {
+          showStatus("Error: " + error.message, "err");
+          return;
+        }
+
+        ["new-order", "new-question", "new-answer", "new-clue"].forEach((id) => {
+          document.getElementById(id).value = "";
+        });
+        showStatus("Question added!", "ok");
+        loadQuestions();
       });
 
-      // Sort: most clues first; ties broken by earliest last-activity (finished sooner)
-      const sorted = Object.values(teamsMap).sort((a, b) => {
-        if (b.clues.size !== a.clues.size) return b.clues.size - a.clues.size;
-        return new Date(a.latest) - new Date(b.latest);
-      });
+      // ── Edit helpers ────────────────────────────────────────────
+      function startEdit(id) {
+        document.querySelector(`#q-${id} .q-view`).style.display = "none";
+        document.getElementById(`edit-${id}`).style.display = "block";
+      }
 
-      const total = totalCount ?? '?';
+      function cancelEdit(id) {
+        document.querySelector(`#q-${id} .q-view`).style.display = "flex";
+        document.getElementById(`edit-${id}`).style.display = "none";
+      }
 
-      const rows = sorted.map((t, i) => `
+      async function saveEdit(id) {
+        const order = parseInt(document.getElementById(`eo-${id}`).value, 10);
+        const question = document.getElementById(`eq-${id}`).value.trim();
+        const answer = document.getElementById(`ea-${id}`).value.trim();
+        const clue = document.getElementById(`ec-${id}`).value.trim();
+
+        if (!order || !question || !answer) {
+          showStatus("Order, question, and answer are required.", "err");
+          return;
+        }
+
+        const { error } = await db
+          .from("questions")
+          .update({ order_number: order, question, answer, clue: clue || null })
+          .eq("id", id);
+
+        if (error) {
+          showStatus("Error: " + error.message, "err");
+          return;
+        }
+        showStatus("Saved!", "ok");
+        loadQuestions();
+      }
+
+      // ── Delete question ─────────────────────────────────────────
+      async function deleteQ(id) {
+        if (!confirm("Delete this question? This cannot be undone.")) return;
+        const { error } = await db.from("questions").delete().eq("id", id);
+        if (error) {
+          showStatus("Error: " + error.message, "err");
+          return;
+        }
+        showStatus("Deleted.", "ok");
+        loadQuestions();
+      }
+
+      // ── Leaderboard ─────────────────────────────────────────────
+      async function loadLeaderboard() {
+        const $content = document.getElementById("leaderboard-content");
+        $content.innerHTML = '<p class="empty-state">Loading…</p>';
+
+        // Fetch total question count for the "X / total" display
+        const { count: totalCount } = await db
+          .from("questions")
+          .select("*", { count: "exact", head: true });
+
+        // Fetch all progress rows, oldest first so the last row per team = most recent
+        const { data, error } = await db
+          .from("teams_progress")
+          .select("team_name, clue_number, solved_at")
+          .order("solved_at", { ascending: true });
+
+        const stampTime = () => {
+          document.getElementById("lb-updated").textContent =
+            "Updated " +
+            new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            });
+        };
+
+        if (error) {
+          $content.innerHTML =
+            '<p class="empty-state" style="color:#cc2222">Failed to load. Check Supabase.</p>';
+          stampTime();
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          $content.innerHTML = '<p class="empty-state">No teams have solved any clues yet.</p>';
+          stampTime();
+          return;
+        }
+
+        // Group rows by team name
+        const teamsMap = {};
+        data.forEach((row) => {
+          if (!teamsMap[row.team_name]) {
+            teamsMap[row.team_name] = { team_name: row.team_name, clues: new Set(), latest: null };
+          }
+          teamsMap[row.team_name].clues.add(row.clue_number);
+          teamsMap[row.team_name].latest = row.solved_at; // ascending → last = most recent
+        });
+
+        // Sort: most clues first; ties broken by earliest last-activity (finished sooner)
+        const sorted = Object.values(teamsMap).sort((a, b) => {
+          if (b.clues.size !== a.clues.size) return b.clues.size - a.clues.size;
+          return new Date(a.latest) - new Date(b.latest);
+        });
+
+        const total = totalCount ?? "?";
+
+        const rows = sorted
+          .map(
+            (t, i) => `
         <tr>
           <td class="lb-rank">${i + 1}</td>
           <td class="lb-name">${esc(t.team_name)}</td>
           <td class="lb-clues">${t.clues.size} / ${total}</td>
           <td class="lb-time">${formatTime(t.latest)}</td>
         </tr>
-      `).join('');
+      `,
+          )
+          .join("");
 
-      $content.innerHTML = `
+        $content.innerHTML = `
         <table class="lb-table">
           <thead>
             <tr>
@@ -532,30 +692,32 @@
         </table>
       `;
 
-      stampTime();
-    }
+        stampTime();
+      }
 
-    function formatTime(isoString) {
-      return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
+      function formatTime(isoString) {
+        return new Date(isoString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
 
-    // ── Status bar ──────────────────────────────────────────────
-    let statusTimer;
-    function showStatus(msg, type) {
-      $statusBar.textContent = msg;
-      $statusBar.className   = `status-bar ${type}`;
-      clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => { $statusBar.className = 'status-bar'; }, 3500);
-    }
+      // ── Status bar ──────────────────────────────────────────────
+      let statusTimer;
+      function showStatus(msg, type) {
+        $statusBar.textContent = msg;
+        $statusBar.className = `status-bar ${type}`;
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => {
+          $statusBar.className = "status-bar";
+        }, 3500);
+      }
 
-    // ── XSS-safe escaping ───────────────────────────────────────
-    function esc(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-  </script>
-</body>
+      // ── XSS-safe escaping ───────────────────────────────────────
+      function esc(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+    </script>
+  </body>
 </html>

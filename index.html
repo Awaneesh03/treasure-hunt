@@ -1,72 +1,79 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Treasure Hunt</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="card">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Treasure Hunt</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="card">
+      <!-- Loading state -->
+      <div id="loading" class="center">Loading…</div>
 
-    <!-- Loading state -->
-    <div id="loading" class="center">Loading…</div>
-
-    <!-- Team name screen (shown once if team not yet registered) -->
-    <div id="team-screen" style="display:none">
-      <h1>Treasure Hunt</h1>
-      <p class="team-prompt">Enter your team name to begin</p>
-      <input type="text" id="team-input" placeholder="Team name…" maxlength="50" autocomplete="off" />
-      <button id="team-btn">Continue</button>
-      <p class="feedback" id="team-error"></p>
-    </div>
-
-    <!-- Question card (shown during hunt) -->
-    <div id="question-card" style="display:none">
-      <h1>Treasure Hunt</h1>
-      <p class="progress" id="progress"></p>
-      <pre class="question-text" id="question-text"></pre>
-
-      <!-- Answer section -->
-      <div id="answer-section">
+      <!-- Team name screen (shown once if team not yet registered) -->
+      <div id="team-screen" style="display: none">
+        <h1>Treasure Hunt</h1>
+        <p class="team-prompt">Enter your team name to begin</p>
         <input
           type="text"
-          id="answer-input"
-          placeholder="Type your answer…"
+          id="team-input"
+          placeholder="Team name…"
+          maxlength="50"
           autocomplete="off"
-          autocorrect="off"
-          spellcheck="false"
         />
-        <button id="submit-btn">Submit Answer</button>
-        <p class="feedback" id="feedback"></p>
+        <button id="team-btn">Continue</button>
+        <p class="feedback" id="team-error"></p>
       </div>
 
-      <!-- Clue section — revealed after a correct answer -->
-      <div id="clue-section" style="display:none">
-        <div class="clue-box">
-          <p class="clue-label">Your next clue</p>
-          <p id="clue-text"></p>
+      <!-- Question card (shown during hunt) -->
+      <div id="question-card" style="display: none">
+        <h1>Treasure Hunt</h1>
+        <p class="progress" id="progress"></p>
+        <pre class="question-text" id="question-text"></pre>
+
+        <!-- Answer section -->
+        <div id="answer-section">
+          <input
+            type="text"
+            id="answer-input"
+            placeholder="Type your answer…"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <button id="submit-btn">Submit Answer</button>
+          <p class="feedback" id="feedback"></p>
+        </div>
+
+        <!-- Clue section — revealed after a correct answer -->
+        <div id="clue-section" style="display: none">
+          <div class="clue-box">
+            <p class="clue-label">Your next clue</p>
+            <p id="clue-text"></p>
+          </div>
+          <button type="button" id="qr-scan-btn" class="qr-scan-btn">📷 Scan QR Code</button>
         </div>
       </div>
+
+      <!-- Completion screen -->
+      <div id="completed" style="display: none">
+        <h2>You did it!</h2>
+        <p>You've completed the treasure hunt.</p>
+        <p style="margin-top: 1rem; font-weight: 600">Congratulations! 🎉</p>
+      </div>
+
+      <!-- Error state -->
+      <div id="error-display" class="err" style="display: none"></div>
     </div>
 
-    <!-- Completion screen -->
-    <div id="completed" style="display:none">
-      <h2>You did it!</h2>
-      <p>You've completed the treasure hunt.</p>
-      <p style="margin-top:1rem; font-weight:600">Congratulations! 🎉</p>
-    </div>
-
-    <!-- Error state -->
-    <div id="error-display" class="err" style="display:none"></div>
-
-  </div>
-
-  <!-- Supabase CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Your config (fill in keys there) -->
-  <script src="config.js"></script>
-  <!-- Main participant logic -->
-  <script src="script.js"></script>
-</body>
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Your config (fill in keys there) -->
+    <script src="config.js"></script>
+    <!-- Main participant logic -->
+    <script src="script.js"></script>
+    <!-- QR scanner (self-contained, no globals) -->
+    <script src="qr.js"></script>
+  </body>
 </html>

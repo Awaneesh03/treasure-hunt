@@ -1,7 +1,16 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   background: #f2f2f2;
   min-height: 100vh;
   display: flex;
@@ -32,7 +41,7 @@ h1 {
 }
 
 .question-text {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   font-size: 0.95rem;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -72,8 +81,12 @@ button {
   transition: background 0.2s;
 }
 
-button:hover  { background: #444; }
-button:active { background: #000; }
+button:hover {
+  background: #444;
+}
+button:active {
+  background: #000;
+}
 
 .feedback {
   margin-top: 1rem;
@@ -83,8 +96,12 @@ button:active { background: #000; }
   min-height: 1.4rem;
 }
 
-.feedback.correct { color: #1a8a1a; }
-.feedback.wrong   { color: #cc2222; }
+.feedback.correct {
+  color: #1a8a1a;
+}
+.feedback.wrong {
+  color: #cc2222;
+}
 
 #completed {
   text-align: center;
@@ -98,8 +115,14 @@ button:active { background: #000; }
   margin-top: 0.5rem;
 }
 
-.center { text-align: center; color: #888; }
-.err    { color: #cc2222; text-align: center; }
+.center {
+  text-align: center;
+  color: #888;
+}
+.err {
+  color: #cc2222;
+  text-align: center;
+}
 
 /* Team name screen */
 .team-prompt {
@@ -134,10 +157,138 @@ button:active { background: #000; }
 
 /* Wrong-answer shake animation */
 @keyframes shake {
-  0%, 100% { transform: translateX(0);    }
-  20%       { transform: translateX(-7px); }
-  40%       { transform: translateX( 7px); }
-  60%       { transform: translateX(-5px); }
-  80%       { transform: translateX( 5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(5px);
+  }
 }
-.shake { animation: shake 0.35s ease; }
+.shake {
+  animation: shake 0.35s ease;
+}
+
+/* ── QR Scan Button ─────────────────────────── */
+.qr-scan-btn {
+  margin-top: 0.75rem;
+  background: #2563eb;
+  font-size: 1rem;
+}
+.qr-scan-btn:hover {
+  background: #1d4ed8;
+}
+.qr-scan-btn:active {
+  background: #1e40af;
+}
+
+/* ── QR Scanner Modal ───────────────────────── */
+#qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.25s,
+    visibility 0.25s;
+}
+#qr-overlay.qr-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+#qr-modal {
+  position: relative;
+  width: 90vw;
+  max-width: 480px;
+  background: #111;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#qr-video {
+  width: 100%;
+  border-radius: 12px 12px 0 0;
+  display: block;
+  background: #000;
+  min-height: 280px;
+  object-fit: cover;
+}
+
+#qr-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  z-index: 10;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#qr-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+#qr-instruction {
+  color: #ccc;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+
+#qr-error {
+  color: #f87171;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem 0.75rem;
+  text-align: center;
+  min-height: 1.3rem;
+}
+
+/* Toast notification */
+.qr-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #333;
+  color: #fff;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  z-index: 10000;
+  opacity: 0;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+  pointer-events: none;
+}
+.qr-toast-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
