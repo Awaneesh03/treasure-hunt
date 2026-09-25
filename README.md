@@ -1,6 +1,17 @@
-# Treasure Hunt
+<div align="center">
 
-A web-based treasure hunt game where teams scan QR codes, solve clues, and race to the finish. Built with vanilla HTML/CSS/JavaScript and powered by [Supabase](https://supabase.com) as the backend.
+# 🗺️ Treasure Hunt
+
+**A QR-code treasure hunt for events: teams scan codes, solve clues in order and race up a live leaderboard. Vanilla JavaScript front end, Supabase back end.**
+
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
+
+</div>
+
+---
 
 ## Features
 
@@ -84,6 +95,13 @@ A web-based treasure hunt game where teams scan QR codes, solve clues, and race 
 - **Backend:** [Supabase](https://supabase.com) (PostgreSQL + REST API)
 - **CDN:** Supabase JS client loaded via jsDelivr
 
-## License
+---
 
-This project is open source.
+## 👤 Author
+
+**Awaneesh Gupta** — B.Tech CSE (AI) @ Vedam School of Technology
+
+[![GitHub](https://img.shields.io/badge/GitHub-Awaneesh03-181717?style=flat-square&logo=github)](https://github.com/Awaneesh03)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-awaneesh--gupta-0A66C2?style=flat-square&logo=linkedin)](https://linkedin.com/in/awaneesh-gupta)
+
+<p align="center"><sub>If you found this project useful, consider giving it a ⭐</sub></p>
